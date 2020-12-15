@@ -19,6 +19,8 @@ from .wpt_report import generate_report, generate_multi_report
 from ..data.session import COMPLETED
 
 WAVE_SRC_DIR = "./tools/wave"
+RESULTS_FILE_REGEX = "^\w\w\d\d\d?\.json$"
+RESULTS_FILE_PATTERN = re.compile(RESULTS_FILE_REGEX)
 
 
 class ResultsManager(object):
@@ -618,6 +620,20 @@ class ResultsManager(object):
         self.remove_tmp_files()
         self.load_results()
         return token
+
+    def import_results_api_json(self, token, api, blob):
+        if not self.is_import_results_enabled:
+            raise PermissionDeniedException()
+        destination_path = os.path.join(self._results_directory_path, token, api)
+        files = os.listdir(destination_path)
+        file_name = ""
+        for file in files:
+            if RESULTS_FILE_PATTERN.match(file):
+                file_name = file
+                break
+        destination_file_path = os.path.join(destination_path, file_name)
+        with open(destination_file_path, "w") as file:
+            file.write(blob)
 
     def remove_tmp_files(self):
         files = os.listdir(".")
