@@ -89,6 +89,20 @@
         var apis = [];
         var testTypeSelectionEnabled = true;
 
+        var GROUP_TAGS = [
+          {
+            color: "warning",
+            text: "Beta",
+            annotation: "-beta",
+            message: "One or more Beta test selected",
+          },
+          {
+            color: "success",
+            text: "Released",
+            annotation: "-released",
+          },
+        ];
+
         var types = [
           { title: "Automatic", value: "automatic" },
           { title: "Manual", value: "manual" },
@@ -143,6 +157,14 @@
                     apiA.title.toLowerCase() > apiB.title.toLowerCase() ? 1 : -1
                   );
                   apis = available_apis;
+                  apis.forEach((api) => (api.tags = []));
+                  apis.forEach((api) =>
+                    GROUP_TAGS.forEach((tag) =>
+                      api.path.indexOf(tag.annotation) !== -1
+                        ? api.tags.push(tag)
+                        : null
+                    )
+                  );
                   selectAllTests();
                   renderSessionConfiguration();
                 });
@@ -404,6 +426,14 @@
           return true;
         }
 
+        function isTagSelected(tag) {
+          var includedTests = state.configuration.tests.include;
+          for (var test of includedTests) {
+            if (test.indexOf(tag) !== -1) return true;
+          }
+          return false;
+        }
+
         function isSessionStarting() {
           return state.isStarting;
         }
@@ -419,6 +449,26 @@
                 )
               )
             );
+          }
+          if (apiErrorElement.children.length === 0) {
+            UI.addClass(apiErrorElement, "is-hidden");
+          } else {
+            UI.removeClass(apiErrorElement, "is-hidden");
+          }
+
+          var warningsElement = UI.getElement("warnings");
+          warningsElement.innerHTML = "";
+          for (var tag of GROUP_TAGS) {
+            if (!tag.message) continue;
+            if (!isTagSelected(tag.annotation)) continue;
+            warningsElement.appendChild(
+              UI.createElement(createWarningMessage(tag.message))
+            );
+          }
+          if (warningsElement.children.length === 0) {
+            UI.addClass(warningsElement, "is-hidden");
+          } else {
+            UI.removeClass(warningsElement, "is-hidden");
           }
           renderButtonsField();
         }
@@ -956,6 +1006,11 @@
                       children: [
                         {
                           id: "api-error",
+                          className: "mb-5 is-hidden",
+                        },
+                        {
+                          id: "warnings",
+                          className: "mb-5 is-hidden",
                         },
                         {
                           className: "menu",
@@ -999,6 +1054,7 @@
               state.expandedApis[api.path] = !state.expandedApis[api.path];
               renderApiList(api);
             },
+            className: "columns is-gapless is-vcentered mb-0",
             children: [
               {
                 element: "input",
@@ -1006,6 +1062,7 @@
                 style: "width: 1.3em; height: 1.3em;vertical-align: middle;",
                 checked: includedRatio > 0,
                 indeterminate: includedRatio > 0 && includedRatio < 1,
+                className: "column is-narrow",
                 onclick: function (event) {
                   event.stopPropagation();
                   if (includedRatio > 0) {
@@ -1021,6 +1078,7 @@
                     element: "span",
                     style:
                       "display: inline-block;vertical-align: middle;margin-left:0.3em;width: 0.7em",
+                    className: "column is-narrow",
                     children: {
                       element: "i",
                       className:
@@ -1032,17 +1090,29 @@
                 : null,
               {
                 style:
-                  "display: inline-block;vertical-align: middle;margin-left:0.3em;width: 90%",
+                  "display: flex;vertical-align: middle;margin-left:0.3em;",
                 text: api.title,
+                className: "column",
+              },
+              {
+                element: "span",
+                className: "column is-narrow",
+                children: api.tags.map(createTag),
               },
             ],
           };
+          function createTag(options) {
+            return {
+              element: "span",
+              className: "tag ml-1 is-" + options.color,
+              text: options.text,
+            };
+          }
           listItem.innerHTML = "";
           listItem.appendChild(UI.createElement(apiListItem));
           if (state.expandedApis && state.expandedApis[api.path]) {
             listItem.appendChild(createApiTestsList(api));
           }
-          checkApiList();
         }
 
         function createApiTestsList(api) {
@@ -1074,6 +1144,7 @@
                   onclick: function (event) {
                     handleIncludedTestToggle(test);
                     renderApiList(api);
+                    checkApiList();
                   },
                   children: [
                     {
@@ -1575,6 +1646,19 @@
           return {
             element: "article",
             className: "message is-danger",
+            children: [
+              {
+                className: "message-body",
+                text: message,
+              },
+            ],
+          };
+        }
+
+        function createWarningMessage(message) {
+          return {
+            element: "article",
+            className: "message is-warning",
             children: [
               {
                 className: "message-body",
