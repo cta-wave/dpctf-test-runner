@@ -158,6 +158,20 @@
                   );
                   apis = available_apis;
                   apis.forEach((api) => (api.tags = []));
+                  apis.forEach((api, index) =>
+                    index % 2 === 0 ? (api.path = api.path + "-beta") : null
+                  );
+                  apis.forEach((api, index) =>
+                    index % 2 === 1 ? (api.path = api.path + "-released") : null
+                  );
+                  apis.forEach((api, index) =>
+                    index % 2 === 0 ? (api.title = api.title + "-beta") : null
+                  );
+                  apis.forEach((api, index) =>
+                    index % 2 === 1
+                      ? (api.title = api.title + "-released")
+                      : null
+                  );
                   apis.forEach((api) =>
                     GROUP_TAGS.forEach((tag) =>
                       api.path.indexOf(tag.annotation) !== -1
@@ -1054,7 +1068,7 @@
               state.expandedApis[api.path] = !state.expandedApis[api.path];
               renderApiList(api);
             },
-            className: "columns is-gapless is-vcentered mb-0",
+            className: "columns is-mobile is-gapless is-vcentered mb-0",
             children: [
               {
                 element: "input",
