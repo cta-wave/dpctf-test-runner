@@ -664,7 +664,7 @@ class ResultsManager(object):
                 file_name = file
                 break
         destination_file_path = os.path.join(destination_path, file_name)
-        with open(destination_file_path, "w") as file:
+        with open(destination_file_path, "wb") as file:
             file.write(blob)
 
         self.generate_report(token, api)
