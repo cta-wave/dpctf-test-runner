@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 import re
 from threading import Timer
+import functools
 
 from .event_dispatcher import TEST_COMPLETED_EVENT
 
@@ -144,8 +145,7 @@ class TestsManager(object):
                 return -1
             return 1
 
-        sorted_tests.sort(cmp=lambda test_a,
-                          test_b: compare(self, test_a, test_b))
+        sorted_tests.sort(key=functools.cmp_to_key(lambda test_a, test_b: compare(self, test_a, test_b)))
         return sorted_tests
 
     def _get_next_test_from_list(self, tests):
