@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Session Configuration - Web Platform Test</title>
-    <link rel="stylesheet" href="css/bulma-0.7.5/bulma.min.css" />
+    <link rel="stylesheet" href="css/bulma-0.9.4/bulma.min.css" />
     <link rel="stylesheet" href="css/fontawesome-5.7.2.min.css" />
     <script src="lib/utils.js"></script>
     <script src="lib/wave-service.js"></script>
@@ -19,61 +19,6 @@
   </head>
   <body>
     <script>
-      //      var apis = [
-      //        { title: "2D Context", path: "/2dcontext" },
-      //        { title: "Content Security Policy", path: "/content-security-policy" },
-      //        { title: "CSS", path: "/css" },
-      //        { title: "DOM", path: "/dom" },
-      //        { title: "ECMAScript", path: "/ecmascript" },
-      //        { title: "Encrypted media", path: "/encrypted-media" },
-      //        { title: "Fetch", path: "/fetch" },
-      //        { title: "FileAPI", path: "/FileAPI" },
-      //        { title: "Fullscreen", path: "/fullscreen" },
-      //        { title: "WebGL", path: "/webgl" },
-      //        { title: "HTML", path: "/html" },
-      //        { title: "IndexedDB", path: "/IndexedDB" },
-      //        { title: "Media Source", path: "/media-source" },
-      //        { title: "Notifications", path: "/notifications" },
-      //        { title: "Page Visibility", path: "/page-visibility" },
-      //        { title: "Service Workers", path: "/service-workers" },
-      //        { title: "UI Events", path: "/uievents" },
-      //        { title: "WAVE Extra", path: "/wave-extra" },
-      //        { title: "Webaudio", path: "/webaudio" },
-      //        { title: "WebCryptoAPI", path: "/WebCryptoAPI" },
-      //        { title: "Webmessaging", path: "/webmessaging" },
-      //        { title: "Websockets", path: "/websockets" },
-      //        { title: "Webstorage", path: "/webstorage" },
-      //        { title: "Workers", path: "/workers" },
-      //        { title: "XHR", path: "/xhr" }
-      //      ];
-
-      //      var referenceSessions = [
-      //        {
-      //          title: "Edge 44.17763",
-      //          engine: "",
-      //          token: "b2924d20-6a93-11e9-98b4-a11fb92a6d1c",
-      //          icon: "fab fa-edge"
-      //        },
-      //        {
-      //          title: "Firefox 64.0",
-      //          engine: "Gecko 64.0",
-      //          token: "bb7aafa0-6a92-11e9-8ec2-04f58dad2e4f",
-      //          icon: "fab fa-firefox"
-      //        },
-      //        {
-      //          title: "WebKit 605.1.15",
-      //          engine: "Revision 239158",
-      //          token: "caf823e0-6a92-11e9-b732-3188d0065ebc",
-      //          icon: "fab fa-safari"
-      //        },
-      //        {
-      //          title: "Chromium 73.0.3640.0",
-      //          engine: "Blink 537.36",
-      //          token: "a50c6db0-6a94-11e9-8d1b-e23fc4555885",
-      //          icon: "fab fa-chrome"
-      //        }
-      //      ];
-
       var detailedTestSelectionEnabled = true;
 
       window.onload = function () {
@@ -87,6 +32,20 @@
         var referenceSessions = [];
         var apis = [];
         var testTypeSelectionEnabled = true;
+
+        var GROUP_TAGS = [
+          {
+            color: "warning",
+            text: "Beta",
+            annotation: "-beta",
+            message: "One or more Beta test selected",
+          },
+          {
+            color: "success",
+            text: "Released",
+            annotation: "-released",
+          },
+        ];
 
         var types = [
           { title: "Automatic", value: "automatic" },
@@ -141,6 +100,28 @@
                     apiA.title.toLowerCase() > apiB.title.toLowerCase() ? 1 : -1
                   );
                   apis = available_apis;
+                  apis.forEach((api) => (api.tags = []));
+                  apis.forEach((api, index) =>
+                    index % 2 === 0 ? (api.path = api.path + "-beta") : null
+                  );
+                  apis.forEach((api, index) =>
+                    index % 2 === 1 ? (api.path = api.path + "-released") : null
+                  );
+                  apis.forEach((api, index) =>
+                    index % 2 === 0 ? (api.title = api.title + "-beta") : null
+                  );
+                  apis.forEach((api, index) =>
+                    index % 2 === 1
+                      ? (api.title = api.title + "-released")
+                      : null
+                  );
+                  apis.forEach((api) =>
+                    GROUP_TAGS.forEach((tag) =>
+                      api.path.indexOf(tag.annotation) !== -1
+                        ? api.tags.push(tag)
+                        : null
+                    )
+                  );
                   selectAllTests();
                   renderSessionConfiguration();
                 });
@@ -384,6 +365,14 @@
           return true;
         }
 
+        function isTagSelected(tag) {
+          var includedTests = state.configuration.tests.include;
+          for (var test of includedTests) {
+            if (test.indexOf(tag) !== -1) return true;
+          }
+          return false;
+        }
+
         function isSessionStarting() {
           return state.isStarting;
         }
@@ -399,6 +388,26 @@
                 )
               )
             );
+          }
+          if (apiErrorElement.children.length === 0) {
+            UI.addClass(apiErrorElement, "is-hidden");
+          } else {
+            UI.removeClass(apiErrorElement, "is-hidden");
+          }
+
+          var warningsElement = UI.getElement("warnings");
+          warningsElement.innerHTML = "";
+          for (var tag of GROUP_TAGS) {
+            if (!tag.message) continue;
+            if (!isTagSelected(tag.annotation)) continue;
+            warningsElement.appendChild(
+              UI.createElement(createWarningMessage(tag.message))
+            );
+          }
+          if (warningsElement.children.length === 0) {
+            UI.addClass(warningsElement, "is-hidden");
+          } else {
+            UI.removeClass(warningsElement, "is-hidden");
           }
           renderButtonsField();
         }
@@ -459,16 +468,17 @@
             WaveService.findToken(
               token,
               function (token) {
-                WaveService.readMalfunctioningTests(token, function (
-                  malfunctioningTests
-                ) {
-                  for (var test of malfunctioningTests) {
-                    if (!test) continue;
-                    if (excludedTests.indexOf(test) !== -1) continue;
-                    excludedTests.push(test);
+                WaveService.readMalfunctioningTests(
+                  token,
+                  function (malfunctioningTests) {
+                    for (var test of malfunctioningTests) {
+                      if (!test) continue;
+                      if (excludedTests.indexOf(test) !== -1) continue;
+                      excludedTests.push(test);
+                    }
+                    renderExcludedTests();
                   }
-                  renderExcludedTests();
-                });
+                );
               },
               function () {
                 state.excludedTestError = "Session not found";
@@ -624,8 +634,7 @@
                     id: "find-error",
                     children: [
                       {
-                        text:
-                          "Could not find any sessions! Try adding more characters of the token.",
+                        text: "Could not find any sessions! Try adding more characters of the token.",
                         className: "message-body",
                       },
                     ],
@@ -920,6 +929,11 @@
                       children: [
                         {
                           id: "api-error",
+                          className: "mb-5 is-hidden",
+                        },
+                        {
+                          id: "warnings",
+                          className: "mb-5 is-hidden",
                         },
                         {
                           element: "ul",
@@ -960,6 +974,7 @@
               state.expandedApis[api.path] = !state.expandedApis[api.path];
               renderApiList(api);
             },
+            className: "columns is-mobile is-gapless is-vcentered mb-0",
             children: [
               {
                 element: "input",
@@ -967,6 +982,7 @@
                 style: "width: 1.3em; height: 1.3em;vertical-align: middle;",
                 checked: includedRatio > 0,
                 indeterminate: includedRatio > 0 && includedRatio < 1,
+                className: "column is-narrow",
                 onclick: function (event) {
                   event.stopPropagation();
                   if (includedRatio > 0) {
@@ -982,6 +998,7 @@
                     element: "span",
                     style:
                       "display: inline-block;vertical-align: middle;margin-left:0.3em;width: 0.7em",
+                    className: "column is-narrow",
                     children: {
                       element: "i",
                       className:
@@ -993,17 +1010,29 @@
                 : null,
               {
                 style:
-                  "display: inline-block;vertical-align: middle;margin-left:0.3em;width: 90%",
+                  "display: flex;vertical-align: middle;margin-left:0.3em;",
                 text: api.title,
+                className: "column",
+              },
+              {
+                element: "span",
+                className: "column is-narrow",
+                children: api.tags.map(createTag),
               },
             ],
           };
+          function createTag(options) {
+            return {
+              element: "span",
+              className: "tag ml-1 is-" + options.color,
+              text: options.text,
+            };
+          }
           listItem.innerHTML = "";
           listItem.appendChild(UI.createElement(apiListItem));
           if (state.expandedApis && state.expandedApis[api.path]) {
             listItem.appendChild(createApiTestsList(api));
           }
-          checkApiList();
         }
 
         function createApiTestsList(api) {
@@ -1029,36 +1058,35 @@
             };
 
             testListView.children = testListView.children.concat(
-              tests
-                .sort()
-                .map(function (test) {
-                  return {
-                    element: "li",
-                    onclick: function (event) {
-                      handleIncludedTestToggle(test);
-                      renderApiList(api);
+              tests.sort().map(function (test) {
+                return {
+                  element: "li",
+                  onclick: function (event) {
+                    handleIncludedTestToggle(test);
+                    renderApiList(api);
+                    checkApiList();
+                  },
+                  children: [
+                    {
+                      element: "a",
+                      children: [
+                        {
+                          element: "input",
+                          type: "checkbox",
+                          style:
+                            "width: 1.3em; height: 1.3em;vertical-align: middle;",
+                          checked: hasIncludedTest(test),
+                        },
+                        {
+                          style:
+                            "display: inline-block;vertical-align: middle;margin-left:0.3em;max-width: 90%",
+                          text: test,
+                        },
+                      ],
                     },
-                    children: [
-                      {
-                        element: "a",
-                        children: [
-                          {
-                            element: "input",
-                            type: "checkbox",
-                            style:
-                              "width: 1.3em; height: 1.3em;vertical-align: middle;",
-                            checked: hasIncludedTest(test),
-                          },
-                          {
-                            style:
-                              "display: inline-block;vertical-align: middle;margin-left:0.3em;max-width: 90%",
-                            text: test,
-                          },
-                        ],
-                      },
-                    ],
-                  };
-                })
+                  ],
+                };
+              })
             );
             return UI.createElement(testListView);
           }
@@ -1280,8 +1308,7 @@
                 {
                   className: "is-size-7",
                   style: "margin-bottom: 20px",
-                  text:
-                    "Provide paths to test files or directories to exclude them from the session. One path per line, lines starting with # are omitted.",
+                  text: "Provide paths to test files or directories to exclude them from the session. One path per line, lines starting with # are omitted.",
                 },
                 {
                   element: "textarea",
@@ -1547,6 +1574,19 @@
           return {
             element: "article",
             className: "message is-danger",
+            children: [
+              {
+                className: "message-body",
+                text: message,
+              },
+            ],
+          };
+        }
+
+        function createWarningMessage(message) {
+          return {
+            element: "article",
+            className: "message is-warning",
             children: [
               {
                 className: "message-body",
