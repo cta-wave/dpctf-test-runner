@@ -4,23 +4,21 @@
     <meta charset="UTF-8" />
     <title>Session Finished - Web Platform Test Runner</title>
     <link rel="stylesheet" href="css/bulma-0.7.5/bulma.min.css" />
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/control-pages.css" />
     <script src="lib/davidshimjs/qrcode.js"></script>
     <script src="lib/keycodes.js"></script>
     <script src="lib/wave-service.js"></script>
     <script src="lib/hbbtv.js"></script>
   </head>
   <body>
-    <section class="section">
-      <div class="container site-header">
-        <img src="res/wavelogo_2016.jpg" alt="WAVE Logo" class="site-logo" />
-        <h1 class="title is-spaced" id="title"></h1>
-      </div>
-
-      <div class="container">
-        <div id="content">
-          <div id="qr-code"></div>
+    <div class="container">
+      <img src="res/wavelogo_2016.jpg" alt="WAVE Logo" class="site-logo" />
+      <h1 class="title" id="title" style="margin: 0.5em 0"></h1>
+    </div>
+    <div class="container">
+      <div style="display: table; width: 100%">
+        <div style="display: table-cell; vertical-align: top; width: 35em">
+          <div id="qr-code" style="width: fit-content"></div>
           <div id="button-wrapper">
             <div id="new-button" class="button is-success is-large tabbable">
               Create New Session
@@ -29,40 +27,44 @@
               View Result Page
             </button>
           </div>
-          <div id="details-wrapper">
+        </div>
+        <div style="display: table-cell; vertical-align: top">
+          <div>
             <h3 class="title is-5 is-spaced">Details</h3>
-            <div class="detail">
-              <div>Token:</div>
-              <div id="token"></div>
-            </div>
-            <div class="detail">
-              <div>User Agent:</div>
-              <div id="user-agent"></div>
-            </div>
-            <div class="detail">
-              <div>Test Types:</div>
-              <div id="test-types"></div>
-            </div>
-            <div class="detail">
-              <div>Total Test Files:</div>
-              <div id="total-tests"></div>
-            </div>
-            <div class="detail">
-              <div>Reference Tokens:</div>
-              <div id="reference-tokens"></div>
-            </div>
-            <div class="detail">
-              <div>Test Timeouts:</div>
-              <div id="test-timeout"></div>
-            </div>
-            <div class="detail">
-              <div>Test Paths:</div>
-              <div id="test-path"></div>
+            <div id="details-wrapper">
+              <div class="detail">
+                <div>Token:</div>
+                <div id="token"></div>
+              </div>
+              <div class="detail">
+                <div>User Agent:</div>
+                <div id="user-agent"></div>
+              </div>
+              <div class="detail">
+                <div>Test Types:</div>
+                <div id="test-types"></div>
+              </div>
+              <div class="detail">
+                <div>Total Test Files:</div>
+                <div id="total-tests"></div>
+              </div>
+              <div class="detail">
+                <div>Reference Tokens:</div>
+                <div id="reference-tokens"></div>
+              </div>
+              <div class="detail">
+                <div>Test Timeouts:</div>
+                <div id="test-timeout"></div>
+              </div>
+              <div class="detail">
+                <div>Test Paths:</div>
+                <div id="test-path"></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
     <script>
       var HOSTNAME = location.hostname;
@@ -116,22 +118,32 @@
       }
 
       function startTests() {
-        sendRequest("GET", WEB_ROOT + "api/next", null, function(response) {
+        sendRequest("GET", WEB_ROOT + "api/next", null, function (response) {
           location.href = response;
         });
       }
 
       var resultsUrl =
-        "http://" + location.host + WEB_ROOT + "overview.html" + location.search;
-      new QRCode(document.getElementById("qr-code"), resultsUrl);
+        "http://" +
+        location.host +
+        WEB_ROOT +
+        "overview.html" +
+        location.search;
+      new QRCode(document.getElementById("qr-code"), {
+        text: resultsUrl,
+        width: 500,
+        height: 500,
+        colorDark: "#ffffff",
+        colorLight: "#000000",
+      });
 
       var resultsButton = document.getElementById("results-button");
-      resultsButton.onclick = function() {
+      resultsButton.onclick = function () {
         window.open(resultsUrl, "_blank");
       };
 
       var newButton = document.getElementById("new-button");
-      newButton.onclick = function() {
+      newButton.onclick = function () {
         location.href = WEB_ROOT + "index.html";
       };
 
@@ -176,7 +188,7 @@
         skipFocus(-1);
       }
 
-      document.onkeydown = function(event) {
+      document.onkeydown = function (event) {
         event = event || window.event;
         var charCode =
           typeof event.which === "number" ? event.which : event.keyCode;

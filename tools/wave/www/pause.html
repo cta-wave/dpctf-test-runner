@@ -4,70 +4,70 @@
     <meta charset="UTF-8" />
     <title>Session Paused - Web Platform Test Runner</title>
     <link rel="stylesheet" href="css/bulma-0.7.5/bulma.min.css" />
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/control-pages.css" />
     <script src="lib/davidshimjs/qrcode.js"></script>
     <script src="lib/keycodes.js"></script>
     <script src="lib/wave-service.js"></script>
     <script src="lib/hbbtv.js"></script>
   </head>
   <body>
-    <section class="section">
-      <div class="container site-header">
-        <img src="res/wavelogo_2016.jpg" alt="WAVE Logo" class="site-logo" />
-        <h1 class="title is-spaced">Session Paused</h1>
-      </div>
-
-      <div id="content">
-        <div id="qr-code"></div>
-        <div id="button-wrapper">
-          <button
-            id="start-button"
-            class="button is-large is-success tabbable"
-          >
-            Continue
-          </button>
-          <button
-            id="results-button"
-            class="button is-large is-light tabbable"
-          >
-            View Result Page
-          </button>
-        </div>
-        <div>(Alternatively to resume the test you can just press Return)</div>
-        <div id="details-wrapper">
-          <h3 class="title is-5 is-spaced">Details</h3>
-          <div class="detail">
-            <div>Token:</div>
-            <div id="token"></div>
-          </div>
-          <div class="detail">
-            <div>User Agent:</div>
-            <div id="user-agent"></div>
-          </div>
-          <div class="detail">
-            <div>Test Types:</div>
-            <div id="test-types"></div>
-          </div>
-          <div class="detail">
-            <div>Total Test Files:</div>
-            <div id="total-tests"></div>
-          </div>
-          <div class="detail">
-            <div>Reference Tokens:</div>
-            <div id="reference-tokens"></div>
-          </div>
-          <div class="detail">
-            <div>Test Timeouts:</div>
-            <div id="test-timeout"></div>
-          </div>
-          <div class="detail">
-            <div>Test Paths:</div>
-            <div id="test-path"></div>
+    <div class="container">
+      <img src="res/wavelogo_2016.jpg" alt="WAVE Logo" class="site-logo" />
+      <h1 class="title" id="title" style="margin: 0.5em 0">Session Paused</h1>
+    </div>
+    <div class="container">
+      <div style="display: table; width: 100%">
+        <div style="display: table-cell; vertical-align: top; width: 35em">
+          <div id="qr-code" style="width: fit-content"></div>
+          <div id="button-wrapper">
+            <button
+              id="start-button"
+              class="button is-large is-success tabbable"
+            >
+              Continue
+            </button>
+            <button id="results-button" class="button is-large tabbable">
+              View Result Page
+            </button>
           </div>
         </div>
+        <div style="display: table-cell; vertical-align: top">
+          <div>
+            <h3 class="title is-5 is-spaced">Details</h3>
+            <div id="details-wrapper">
+              <div class="detail">
+                <div>Token:</div>
+                <div id="token"></div>
+              </div>
+              <div class="detail">
+                <div>User Agent:</div>
+                <div id="user-agent"></div>
+              </div>
+              <div class="detail">
+                <div>Test Types:</div>
+                <div id="test-types"></div>
+              </div>
+              <div class="detail">
+                <div>Total Test Files:</div>
+                <div id="total-tests"></div>
+              </div>
+              <div class="detail">
+                <div>Reference Tokens:</div>
+                <div id="reference-tokens"></div>
+              </div>
+              <div class="detail">
+                <div>Test Timeouts:</div>
+                <div id="test-timeout"></div>
+              </div>
+              <div class="detail">
+                <div>Test Paths:</div>
+                <div id="test-path"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
 
     <script>
       var HOSTNAME = location.hostname;
@@ -77,7 +77,8 @@
       var match = QUERY.match(/token=([^&]+)/);
       var TOKEN = match ? match[1] : null;
       if (TOKEN)
-        document.cookie = "resume_token=" + TOKEN + "; expires=Fri, 31 Dec 9999 23:59:59 GMT";
+        document.cookie =
+          "resume_token=" + TOKEN + "; expires=Fri, 31 Dec 9999 23:59:59 GMT";
       var selectedTabbable = -1;
 
       function displaySessionConfiguration(configuration) {
@@ -116,27 +117,31 @@
       }
 
       function continueTests() {
-        WaveService.startSession(TOKEN, function() {
-          WaveService.readNextTest(TOKEN, function(url) {
+        WaveService.startSession(TOKEN, function () {
+          WaveService.readNextTest(TOKEN, function (url) {
             location.href = url;
           });
         });
       }
 
-      WaveService.addSessionEventListener(TOKEN, function(message) {
+      WaveService.addSessionEventListener(TOKEN, function (message) {
         if (message.type !== "status") return;
         if (message.data !== "running") return;
-        WaveService.readNextTest(TOKEN, function(url) {
+        WaveService.readNextTest(TOKEN, function (url) {
           location.href = url;
         });
       });
 
       var resultsUrl =
-        "http://" + location.host + WEB_ROOT + "overview.html" + location.search;
+        "http://" +
+        location.host +
+        WEB_ROOT +
+        "overview.html" +
+        location.search;
       new QRCode(document.getElementById("qr-code"), resultsUrl);
 
       var resultsButton = document.getElementById("results-button");
-      resultsButton.onclick = function() {
+      resultsButton.onclick = function () {
         window.open(resultsUrl, "_blank");
       };
 
@@ -184,7 +189,7 @@
         skipFocus(-1);
       }
 
-      document.onkeydown = function(event) {
+      document.onkeydown = function (event) {
         event = event || window.event;
         var charCode =
           typeof event.which === "number" ? event.which : event.keyCode;

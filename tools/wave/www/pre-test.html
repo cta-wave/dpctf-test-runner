@@ -3,69 +3,43 @@
 <html>
   <head>
     <link rel="stylesheet" href="css/bulma-0.7.5/bulma.min.css" />
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/control-pages.css" />
     <script src="lib/davidshimjs/qrcode.js"></script>
     <script src="lib/joseph_myers/md5.js"></script>
     <script src="lib/hbbtv.js"></script>
-    <style>
-      body {
-        padding: 0;
-        margin: 0;
-        width: 100vw;
-        height: 100vh;
-        display: flex;
-        /*justify-content: center;*/
-        align-items: center;
-        flex-direction: column;
-        font-family: sans-serif;
-        font-size: 2vh;
-      }
-      .text {
-        font-size: 2em;
-      }
-      .detail {
-        font-size: 1em;
-      }
-      #token,
-      #test-id {
-        font-family: monospace;
-        font-size: 1em;
-      }
-      #test-path {
-        font-size: 1em;
-      }
-      #qr-code > img, #qr-code > canvas {
-        height: 22em;
-      }
-      #qr-code.pre {
-        padding: 1em;
-      }
-      #details-heading {
-        font-size: 1.5em;
-      }
-    </style>
   </head>
   <body>
-    <div class="text">Next test is about to start</div>
-    <div id="details-wrapper">
-      <h3 id="details-heading" class="title is-spaced">Details</h3>
-      <div class="detail">
-        <div>Session Token:</div>
-        <div id="token">014278a2-1eb9-11eb-be1f-0021ccd76152</div>
+    <div class="container" style="width: fit-content">
+      <div class="title is-4" style="width: 100%; text-align: center; margin-top: 1em;">
+        Next test is about to start
       </div>
-      <div class="detail">
-        <div>Test:</div>
-        <div id="test-path">
-          Folder1/fullscreen-playback-of-switching-sets-manual_ToS_MultiRate_fragmented.html
+      <div>
+        <h3 id="details-heading" class="title is-5 is-spaced">Details</h3>
+        <div id="details-wrapper">
+          <div class="detail">
+            <div>Session Token:</div>
+            <div id="token" class="monospace">
+              014278a2-1eb9-11eb-be1f-0021ccd76152
+            </div>
+          </div>
+          <div class="detail">
+            <div>Test:</div>
+            <div id="test-path">
+              Folder1/fullscreen-playback-of-switching-sets-manual_ToS_MultiRate_fragmented.html
+            </div>
+          </div>
+          <div class="detail">
+            <div>Test ID:</div>
+            <div id="test-id" class="monospace">
+              014278a2-1eb9-11eb-be1f-0021ccd76152
+            </div>
+          </div>
         </div>
       </div>
-      <div class="detail">
-        <div>Test ID:</div>
-        <div id="test-id">014278a2-1eb9-11eb-be1f-0021ccd76152</div>
-      </div>
     </div>
-    <div id="qr-code" class="pre" style="margin-top: 1rem;"></div>
+    <div class="container" style="width: fit-content">
+      <div id="qr-code" class="pre" style="margin-top: 2em"></div>
+    </div>
   </body>
   <script>
     var HOSTNAME = location.hostname;
@@ -115,7 +89,7 @@
     });
 
     setTimeout(function () {
-      location.href = REDIRECT_URL;
+      //location.href = REDIRECT_URL;
     }, REDIRECT_TIME * 1000);
   </script>
 </html>
