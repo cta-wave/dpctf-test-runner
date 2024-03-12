@@ -1,0 +1,107 @@
+body {
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
+  margin: 0;
+  color: #000;
+  font-size: 2vh;
+  background-color: #fff;
+}
+
+.section {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.site-logo {
+  max-width: 25em;
+}
+
+#content {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+#qr-code > img,
+#qr-code > canvas {
+  height: 20em;
+  width: 20em;
+  border: solid;
+  border-width: 0.6em;
+  border-color: black;
+}
+
+#qr-code {
+  padding: 1em;
+  border: 0.1em solid rgb(200, 200, 200);
+  border-radius: 0.7em;
+  width: fit-content;
+}
+
+#button-wrapper {
+  display: flex;
+  margin: 2em 0;
+}
+
+#button-wrapper :not(:first-child) {
+  margin-left: 1em;
+}
+
+#token,
+#test-path,
+.monospace {
+  font-family: monospace;
+}
+
+#details-wrapper {
+  display: table;
+}
+
+.prompt {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 700px;
+}
+
+.detail {
+  display: table-row;
+  font-size: 1em;
+}
+
+.detail :first-child {
+  min-width: 8em;
+  font-weight: bold;
+}
+
+.detail div {
+  display: table-cell;
+}
+
+.mb-2 {
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 2.5em;
+}
+
+.button.is-large {
+  font-size: 1.5em;
+}
+
+.title.is-5 {
+  font-size: 2em;
+}
+
+.title.is-4 {
+  font-size: 2.5em;
+}
+
+.title:not(:last-child) {
+  margin-bottom: 1em;
+}
