@@ -66,6 +66,14 @@ if (location.search && location.search.indexOf("token=") != -1) {
     };
   } catch (err) {}
 
+  setInterval(function () {
+    sendLogs(
+      __WAVE__TOKEN,
+      function () {},
+      function () {}
+    );
+  }, 3000);
+
   setTimeout(function () {
     sendLogs(
       __WAVE__TOKEN,

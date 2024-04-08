@@ -378,6 +378,11 @@ class TestsManager(object):
             self._logs[token] = []
         self._logs[token] = self._logs[token] + logs
 
+    def set_logs(self, token, logs):
+        if token not in self._logs:
+            self._logs[token] = []
+        self._logs[token] = logs
+
     def get_logs(self, token):
         if token not in self._logs:
             return []

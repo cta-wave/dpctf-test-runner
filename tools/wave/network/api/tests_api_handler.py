@@ -240,7 +240,7 @@ class TestsApiHandler(ApiHandler):
             if "logs" in data:
                 logs = data["logs"]
 
-            self._tests_manager.add_logs(token, logs)
+            self._tests_manager.set_logs(token, logs)
         except Exception:
             self.handle_exception("Failed to add logs")
             response.status = 500
