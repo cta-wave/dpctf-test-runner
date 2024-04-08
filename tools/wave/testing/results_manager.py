@@ -522,7 +522,7 @@ class ResultsManager(object):
 
         zip_file_name = str(time.time()) + ".zip"
         zip = zipfile.ZipFile(zip_file_name, "w")
-        for api, result in results.iteritems():
+        for api, result in results.items():
             zip.writestr(
                 api + ".json",
                 json.dumps({"results": result}, indent=4),
@@ -543,7 +543,7 @@ class ResultsManager(object):
 
         zip.close()
 
-        with open(zip_file_name, "r") as file:
+        with open(zip_file_name, "rb") as file:
             blob = file.read()
             os.remove(zip_file_name)
 
@@ -570,7 +570,7 @@ class ResultsManager(object):
                 zip.write(file_path, file_name, zipfile.ZIP_DEFLATED)
         zip.close()
 
-        with open(zip_file_name, "r") as file:
+        with open(zip_file_name, "rb") as file:
             blob = file.read()
             os.remove(zip_file_name)
 
@@ -604,7 +604,7 @@ class ResultsManager(object):
 
         zip.close()
 
-        with open(tmp_file_name, "r") as file:
+        with open(tmp_file_name, "rb") as file:
             blob = file.read()
 
             self.remove_tmp_files()
