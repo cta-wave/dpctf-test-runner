@@ -66,14 +66,21 @@ if (location.search && location.search.indexOf("token=") != -1) {
     };
   } catch (err) {}
 
-  setTimeout(function () {
-    sendLogs(
-      __WAVE__TOKEN,
-      function () {},
-      function () {}
-    );
-    loadNext();
-  }, __WAVE__TIMEOUT - 10000);
+  var __wave_test_timeout;
+  setTestTimeout(__WAVE__TIMEOUT);
+  function setTestTimeout(timeoutMillis) {
+    if (__wave_test_timeout) {
+      clearTimeout(__wave_test_timeout);
+    }
+    __wave_test_timeout = setTimeout(function () {
+      sendLogs(
+        __WAVE__TOKEN,
+        function () {},
+        function () {}
+      );
+      loadNext();
+    }, timeoutMillis);
+  }
 
   function logToConsole() {
     var text = "";
