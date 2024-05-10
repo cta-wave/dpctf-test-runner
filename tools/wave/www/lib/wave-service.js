@@ -1,4 +1,15 @@
 function sendRequest(method, uri, headers, data, onSuccess, onError) {
+  return sendRootRequest(
+    method,
+    WaveService.uriPrefix + uri,
+    headers,
+    data,
+    onSuccess,
+    onError
+  );
+}
+
+function sendRootRequest(method, uri, headers, data, onSuccess, onError) {
   var xhr = new XMLHttpRequest();
   xhr.onload = function () {
     if (xhr.status === 200) {
@@ -10,7 +21,7 @@ function sendRequest(method, uri, headers, data, onSuccess, onError) {
   xhr.onerror = function () {
     if (onError) onError();
   };
-  xhr.open(method, WaveService.uriPrefix + uri, true);
+  xhr.open(method, uri, true);
   for (var header in headers) {
     xhr.setRequestHeader(header, headers[header]);
   }
@@ -387,6 +398,18 @@ var WaveService = {
       }
     );
   },
+  readTestSubsets: function (onSuccess, onError) {
+    sendRootRequest(
+      "GET",
+      "/test-subsets.json",
+      null,
+      null,
+      function (response) {
+        var subsets = JSON.parse(response).subsets;
+        onSuccess(subsets);
+      }
+    );
+  },
 
   // RESULTS API
   createResult: function (token, result, onSuccess, onError) {
@@ -703,7 +726,7 @@ var WaveService = {
           importResultsEnabled: data.import_results_enabled,
           reportsEnabled: data.reports_enabled,
           versionString: data.version_string,
-          testTypeSelectionEnabled: data.test_type_selection_enabled
+          testTypeSelectionEnabled: data.test_type_selection_enabled,
         };
         onSuccess(configuration);
       },

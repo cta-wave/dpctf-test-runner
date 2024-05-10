@@ -97,6 +97,7 @@
         loadSessionData(token, function () {
           loadPublicSessionData();
         });
+        loadTestSubsets();
         render();
 
         function loadServerStatus() {
@@ -153,6 +154,21 @@
               renderResumeView();
             }
           );
+        }
+
+        function loadTestSubsets() {
+          state.testSubsets = [];
+          WaveService.readTestSubsets(function (subsets) {
+            state.testSubsets = subsets;
+            WaveService.readTestList(
+              function (readTests) {
+                state.tests = readTests;
+              }
+            );
+            try {
+              renderApisField();
+            } catch (_) {}
+          });
         }
 
         function loadPublicSessionData() {
@@ -310,6 +326,11 @@
           configuration.tests.include = [];
         }
 
+        function selectSubset(subset) {
+          var tests = state.configuration.tests;
+          tests.include = subset.tests;
+        }
+
         function hasTestType(value) {
           var configuration = state.configuration;
           var index = configuration.types.findIndex((type) => type === value);
@@ -459,16 +480,17 @@
             WaveService.findToken(
               token,
               function (token) {
-                WaveService.readMalfunctioningTests(token, function (
-                  malfunctioningTests
-                ) {
-                  for (var test of malfunctioningTests) {
-                    if (!test) continue;
-                    if (excludedTests.indexOf(test) !== -1) continue;
-                    excludedTests.push(test);
+                WaveService.readMalfunctioningTests(
+                  token,
+                  function (malfunctioningTests) {
+                    for (var test of malfunctioningTests) {
+                      if (!test) continue;
+                      if (excludedTests.indexOf(test) !== -1) continue;
+                      excludedTests.push(test);
+                    }
+                    renderExcludedTests();
                   }
-                  renderExcludedTests();
-                });
+                );
               },
               function () {
                 state.excludedTestError = "Session not found";
@@ -624,8 +646,7 @@
                     id: "find-error",
                     children: [
                       {
-                        text:
-                          "Could not find any sessions! Try adding more characters of the token.",
+                        text: "Could not find any sessions! Try adding more characters of the token.",
                         className: "message-body",
                       },
                     ],
@@ -899,16 +920,32 @@
                   className: "field-label",
                   children: [
                     { className: "label", text: "Test Groups" },
-                    createSelectDeselectButtons(
-                      function () {
-                        selectAllTests();
-                        renderApisField();
-                      },
-                      function () {
-                        deselectAllTests();
-                        renderApisField();
-                      }
-                    ),
+                    {
+                      style: "margin-top: 0.3em",
+                      children: [
+                        createSelectButton("All", function () {
+                          selectAllTests();
+                          renderApisField();
+                        }),
+                        createSelectButton("None", function () {
+                          deselectAllTests();
+                          renderApisField();
+                        }),
+                      ],
+                    },
+                    {
+                      children: state.testSubsets.map((subset) => {
+                        var button = createSelectButton(
+                          subset.title,
+                          function () {
+                            selectSubset(subset);
+                            renderApisField();
+                          }
+                        );
+                        button.style = "margin: 0.3em 0.3em 0 0";
+                        return button;
+                      }),
+                    },
                   ],
                 },
                 {
@@ -1029,36 +1066,34 @@
             };
 
             testListView.children = testListView.children.concat(
-              tests
-                .sort()
-                .map(function (test) {
-                  return {
-                    element: "li",
-                    onclick: function (event) {
-                      handleIncludedTestToggle(test);
-                      renderApiList(api);
+              tests.sort().map(function (test) {
+                return {
+                  element: "li",
+                  onclick: function (event) {
+                    handleIncludedTestToggle(test);
+                    renderApiList(api);
+                  },
+                  children: [
+                    {
+                      element: "a",
+                      children: [
+                        {
+                          element: "input",
+                          type: "checkbox",
+                          style:
+                            "width: 1.3em; height: 1.3em;vertical-align: middle;",
+                          checked: hasIncludedTest(test),
+                        },
+                        {
+                          style:
+                            "display: inline-block;vertical-align: middle;margin-left:0.3em;max-width: 90%",
+                          text: test,
+                        },
+                      ],
                     },
-                    children: [
-                      {
-                        element: "a",
-                        children: [
-                          {
-                            element: "input",
-                            type: "checkbox",
-                            style:
-                              "width: 1.3em; height: 1.3em;vertical-align: middle;",
-                            checked: hasIncludedTest(test),
-                          },
-                          {
-                            style:
-                              "display: inline-block;vertical-align: middle;margin-left:0.3em;max-width: 90%",
-                            text: test,
-                          },
-                        ],
-                      },
-                    ],
-                  };
-                })
+                  ],
+                };
+              })
             );
             return UI.createElement(testListView);
           }
@@ -1138,16 +1173,19 @@
                   className: "field-label",
                   children: [
                     { className: "label", text: "Reference Browsers" },
-                    createSelectDeselectButtons(
-                      function () {
-                        selectAllRefSessions();
-                        renderReferencesField();
-                      },
-                      function () {
-                        deselectAllRefSessions;
-                        renderReferencesField();
-                      }
-                    ),
+                    {
+                      style: "margin-top: 0.3em",
+                      children: [
+                        createSelectButton("All", function () {
+                          selectAllRefSessions();
+                          renderReferencesField();
+                        }),
+                        createSelectButton("None", function () {
+                          deselectAllRefSessions;
+                          renderReferencesField();
+                        }),
+                      ],
+                    },
                   ],
                 },
                 {
@@ -1280,8 +1318,7 @@
                 {
                   className: "is-size-7",
                   style: "margin-bottom: 20px",
-                  text:
-                    "Provide paths to test files or directories to exclude them from the session. One path per line, lines starting with # are omitted.",
+                  text: "Provide paths to test files or directories to exclude them from the session. One path per line, lines starting with # are omitted.",
                 },
                 {
                   element: "textarea",
@@ -1522,24 +1559,13 @@
           }));
         }
 
-        function createSelectDeselectButtons(onSelect, onDeselect) {
+        function createSelectButton(text, onSelect) {
           return {
-            style: "margin-top: 0.3em",
-            children: [
-              {
-                element: "button",
-                style: "margin-right: 0.3em",
-                className: "button is-rounded is-small",
-                text: "All",
-                onClick: onSelect,
-              },
-              {
-                element: "button",
-                className: "button is-rounded is-small",
-                text: "None",
-                onClick: onDeselect,
-              },
-            ],
+            element: "button",
+            style: "margin-right: 0.3em",
+            className: "button is-rounded is-small",
+            text: text,
+            onClick: onSelect,
           };
         }
 
