@@ -158,20 +158,6 @@
                   );
                   apis = available_apis;
                   apis.forEach((api) => (api.tags = []));
-                  apis.forEach((api, index) =>
-                    index % 2 === 0 ? (api.path = api.path + "-beta") : null
-                  );
-                  apis.forEach((api, index) =>
-                    index % 2 === 1 ? (api.path = api.path + "-released") : null
-                  );
-                  apis.forEach((api, index) =>
-                    index % 2 === 0 ? (api.title = api.title + "-beta") : null
-                  );
-                  apis.forEach((api, index) =>
-                    index % 2 === 1
-                      ? (api.title = api.title + "-released")
-                      : null
-                  );
                   apis.forEach((api) =>
                     GROUP_TAGS.forEach((tag) =>
                       api.path.indexOf(tag.annotation) !== -1
@@ -363,7 +349,8 @@
 
         function selectSubset(subset) {
           var tests = state.configuration.tests;
-          tests.include = subset.tests;
+          tests.include = [];
+          subset.tests.forEach((test) => tests.include.push(test));
         }
 
         function hasTestType(value) {
@@ -442,10 +429,35 @@
 
         function isTagSelected(tag) {
           var includedTests = state.configuration.tests.include;
-          for (var test of includedTests) {
-            if (test.indexOf(tag) !== -1) return true;
+          var tagSubsets = state.testSubsets.filter((subset) => !!subset.tag);
+          for (var subset of tagSubsets) {
+            for (var test of includedTests) {
+              if (test.indexOf(tag) !== -1) return true;
+            }
           }
           return false;
+        }
+
+        function getSelectedTagWarnings() {
+          var includedTests = state.configuration.tests.include;
+          var messages = [];
+          for (var subset of state.testSubsets) {
+            if (!subset.tag) continue;
+            if (!subset.warning) continue;
+            for (var test of includedTests) {
+              if (subset.tests.indexOf(test) === -1) continue;
+              messages.push(subset.warning);
+            }
+          }
+          return messages;
+        }
+
+        function getTags(test) {
+          var tagSubsets = state.testSubsets.filter((subset) => !!subset.tag);
+          var tags = tagSubsets
+            .filter((subset) => subset.tests.indexOf(test) !== -1)
+            .map((subset) => subset.tag);
+          return tags;
         }
 
         function isSessionStarting() {
@@ -472,11 +484,9 @@
 
           var warningsElement = UI.getElement("warnings");
           warningsElement.innerHTML = "";
-          for (var tag of GROUP_TAGS) {
-            if (!tag.message) continue;
-            if (!isTagSelected(tag.annotation)) continue;
+          for (var warning of getSelectedTagWarnings()) {
             warningsElement.appendChild(
-              UI.createElement(createWarningMessage(tag.message))
+              UI.createElement(createWarningMessage(warning))
             );
           }
           if (warningsElement.children.length === 0) {
@@ -1115,18 +1125,19 @@
               },
             ],
           };
-          function createTag(options) {
-            return {
-              element: "span",
-              className: "tag ml-1 is-" + options.color,
-              text: options.text,
-            };
-          }
           listItem.innerHTML = "";
           listItem.appendChild(UI.createElement(apiListItem));
           if (state.expandedApis && state.expandedApis[api.path]) {
             listItem.appendChild(createApiTestsList(api));
           }
+        }
+
+        function createTag(options) {
+          return {
+            element: "span",
+            className: "tag ml-1 is-" + options.color,
+            text: options.text,
+          };
         }
 
         function createApiTestsList(api) {
@@ -1163,6 +1174,8 @@
                   children: [
                     {
                       element: "a",
+                      className:
+                        "columns is-mobile is-gapless is-vcentered mb-0",
                       children: [
                         {
                           element: "input",
@@ -1170,11 +1183,18 @@
                           style:
                             "width: 1.3em; height: 1.3em;vertical-align: middle;",
                           checked: hasIncludedTest(test),
+                          class: "column is-narrow",
                         },
                         {
                           style:
                             "display: inline-block;vertical-align: middle;margin-left:0.3em;max-width: 90%",
                           text: test,
+                          class: "column",
+                        },
+                        {
+                          element: "span",
+                          className: "column is-narrow",
+                          children: getTags(test).map(createTag),
                         },
                       ],
                     },
@@ -1670,13 +1690,18 @@
         }
 
         function createWarningMessage(message) {
+          var linkRegex = /\[([^\]]+)]\(([^)]*)\)/g;
+          for (const match of message.matchAll(linkRegex)) {
+            var htmlLink = '<a target="_blank" href="' + match[2] + '">' + match[1] + "</a>";
+            message = message.replace(match[0], htmlLink);
+          }
           return {
             element: "article",
             className: "message is-warning",
             children: [
               {
                 className: "message-body",
-                text: message,
+                html: message,
               },
             ],
           };
