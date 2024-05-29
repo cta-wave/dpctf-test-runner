@@ -89,20 +89,6 @@
         var apis = [];
         var testTypeSelectionEnabled = true;
 
-        var GROUP_TAGS = [
-          {
-            color: "warning",
-            text: "Beta",
-            annotation: "-beta",
-            message: "One or more Beta test selected",
-          },
-          {
-            color: "success",
-            text: "Released",
-            annotation: "-released",
-          },
-        ];
-
         var types = [
           { title: "Automatic", value: "automatic" },
           { title: "Manual", value: "manual" },
@@ -157,14 +143,6 @@
                     apiA.title.toLowerCase() > apiB.title.toLowerCase() ? 1 : -1
                   );
                   apis = available_apis;
-                  apis.forEach((api) => (api.tags = []));
-                  apis.forEach((api) =>
-                    GROUP_TAGS.forEach((tag) =>
-                      api.path.indexOf(tag.annotation) !== -1
-                        ? api.tags.push(tag)
-                        : null
-                    )
-                  );
                   selectAllTests();
                   renderSessionConfiguration();
                 });
@@ -438,15 +416,16 @@
           return false;
         }
 
-        function getSelectedTagWarnings() {
+        function getSelectedTagMessages() {
           var includedTests = state.configuration.tests.include;
           var messages = [];
           for (var subset of state.testSubsets) {
             if (!subset.tag) continue;
-            if (!subset.warning) continue;
+            if (!subset.message) continue;
             for (var test of includedTests) {
               if (subset.tests.indexOf(test) === -1) continue;
-              messages.push(subset.warning);
+              messages.push(subset.message);
+              break;
             }
           }
           return messages;
@@ -482,17 +461,17 @@
             UI.removeClass(apiErrorElement, "is-hidden");
           }
 
-          var warningsElement = UI.getElement("warnings");
-          warningsElement.innerHTML = "";
-          for (var warning of getSelectedTagWarnings()) {
-            warningsElement.appendChild(
-              UI.createElement(createWarningMessage(warning))
+          var messagesElement = UI.getElement("messages");
+          messagesElement.innerHTML = "";
+          for (var message of getSelectedTagMessages()) {
+            messagesElement.appendChild(
+              UI.createElement(createMessage(message))
             );
           }
-          if (warningsElement.children.length === 0) {
-            UI.addClass(warningsElement, "is-hidden");
+          if (messagesElement.children.length === 0) {
+            UI.addClass(messagesElement, "is-hidden");
           } else {
-            UI.removeClass(warningsElement, "is-hidden");
+            UI.removeClass(messagesElement, "is-hidden");
           }
           renderButtonsField();
         }
@@ -1033,7 +1012,7 @@
                           className: "mb-5 is-hidden",
                         },
                         {
-                          id: "warnings",
+                          id: "messages",
                           className: "mb-5 is-hidden",
                         },
                         {
@@ -1117,11 +1096,6 @@
                   "display: flex;vertical-align: middle;margin-left:0.3em;",
                 text: api.title,
                 className: "column",
-              },
-              {
-                element: "span",
-                className: "column is-narrow",
-                children: api.tags.map(createTag),
               },
             ],
           };
@@ -1689,19 +1663,22 @@
           };
         }
 
-        function createWarningMessage(message) {
+        function createMessage(message) {
+          var text = message.text || "";
+          var color = message.color || "warning";
           var linkRegex = /\[([^\]]+)]\(([^)]*)\)/g;
-          for (const match of message.matchAll(linkRegex)) {
-            var htmlLink = '<a target="_blank" href="' + match[2] + '">' + match[1] + "</a>";
-            message = message.replace(match[0], htmlLink);
+          for (const match of text.matchAll(linkRegex)) {
+            var htmlLink =
+              '<a target="_blank" href="' + match[2] + '">' + match[1] + "</a>";
+            text = text.replace(match[0], htmlLink);
           }
           return {
             element: "article",
-            className: "message is-warning",
+            className: "message is-" + color,
             children: [
               {
                 className: "message-body",
-                html: message,
+                html: text,
               },
             ],
           };
