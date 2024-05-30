@@ -163,6 +163,7 @@
           WaveService.readTestSubsets(function (subsets) {
             state.testSubsets = subsets;
             loadTests(() => callback(subsets));
+            applyDefaultFilters();
             try {
               renderApisField();
             } catch (_) {}
@@ -352,6 +353,16 @@
               test.tags.push(subset.tag);
             }
           }
+        }
+
+        function applyDefaultFilters() {
+          const subsets = state.testSubsets;
+          for (let subset of subsets) {
+            if (!subset.tag) continue;
+            if (!subset.tag.default_filter) continue;
+            state.activeFilters.push(subset.tag.text);
+          }
+          selectAllTests();
         }
 
         function selectSubset(subset) {
