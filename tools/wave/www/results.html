@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Session Results - Web Platform Test</title>
-    <link rel="stylesheet" href="css/bulma-0.7.5/bulma.min.css" />
-    <link rel="stylesheet" href="css/fontawesome-5.7.2.min.css" />
+    <link rel="stylesheet" href="css/bulma-1.0.0/bulma.min.css" />
+    <link rel="stylesheet" href="css/fontawesome-6.5.2.min.css" />
     <!-- <link rel="stylesheet" href="css/result.css" /> -->
     <script src="lib/utils.js"></script>
     <script src="lib/wave-service.js"></script>
@@ -266,7 +266,7 @@
                       {
                         className: "column is-narrow",
                         children: {
-                          className: "button is-dark is-outlined",
+                          className: "button",
                           onclick: resultUi.openResultsOverview,
                           children: [
                             {
@@ -275,7 +275,7 @@
                               children: [
                                 {
                                   element: "i",
-                                  className: "fas fa-arrow-left",
+                                  className: "fa-solid fa-arrow-left",
                                 },
                               ],
                             },
@@ -362,7 +362,7 @@
           ) {
             const pauseResumeButton = UI.createElement({
               id: "pause-resume-button",
-              className: "control button is-dark is-outlined",
+              className: "control button",
               onclick: function () {
                 if (status === "running") {
                   WaveService.pauseSession(token, resultUi.refreshData);
@@ -378,7 +378,7 @@
                     {
                       element: "i",
                       className:
-                        status === "running" ? "fas fa-pause" : "fas fa-play",
+                        status === "running" ? "fa-solid fa-pause" : "fa-solid fa-play",
                     },
                   ],
                 },
@@ -394,7 +394,7 @@
           if (status && status !== "aborted" && status !== "completed") {
             const stopButton = UI.createElement({
               id: "stop-button",
-              className: "control button is-dark is-outlined",
+              className: "control button",
               onclick: resultUi.stopSession,
               children: [
                 {
@@ -403,7 +403,7 @@
                   children: [
                     {
                       element: "i",
-                      className: "fas fa-square",
+                      className: "fa-solid fa-square",
                     },
                   ],
                 },
@@ -418,7 +418,7 @@
           if (!isPublic) {
             const deleteButton = UI.createElement({
               id: "delete-button",
-              className: "control button is-dark is-outlined",
+              className: "control button",
               onclick: resultUi.showDeleteModal,
               children: [
                 {
@@ -427,7 +427,7 @@
                   children: [
                     {
                       element: "i",
-                      className: "fas fa-trash-alt",
+                      className: "fa-solid fa-trash-alt",
                     },
                   ],
                 },
@@ -708,7 +708,7 @@
                 children: {
                   className: "field",
                   children: {
-                    className: `control tag ${getTagStyle(status.status)}`,
+                    className: `tag ${getTagStyle(status.status)}`,
                     text: status.status,
                   },
                 },
@@ -870,13 +870,13 @@
                                 },
                                 {
                                   className:
-                                    "button is-dark is-outlined is-small is-rounded control",
+                                    "button is-small is-rounded",
                                   text: "save",
                                   onClick: resultUi.addLabel,
                                 },
                                 {
                                   className:
-                                    "button is-dark is-outlined is-small is-rounded control",
+                                    "button is-small is-rounded",
                                   text: "cancel",
                                   onClick: resultUi.hideAddLabel,
                                 },
@@ -926,7 +926,7 @@
             const { token, browser } = session;
             const referenceSessionItem = UI.createElement({
               className:
-                "control button is-dark is-small is-rounded is-outlined",
+                "button is-small is-rounded",
               onClick: () => WaveService.openSession(token),
               children: [
                 {
@@ -971,7 +971,7 @@
           const { lastCompletedTests } = resultUi.state;
           const testsTable = UI.createElement({
             element: "table",
-            className: "table",
+            className: "table is-bordered is-striped",
             style: "min-width: 100%",
             children: [
               {
@@ -997,7 +997,7 @@
                       children: [
                         {
                           element: "button",
-                          className: "button is-dark is-outlined is-small",
+                          className: "button is-small",
                           onClick: () => resultUi.addMalfunctioningTest(path),
                           title: "Add to malfunctioning tests list.",
                           children: [
@@ -1010,8 +1010,8 @@
                                   className: resultUi.isTestOnMalfunctioningList(
                                     path
                                   )
-                                    ? "fas fa-check"
-                                    : "fas fa-plus",
+                                    ? "fa-solid fa-check"
+                                    : "fa-solid fa-plus",
                                 },
                               ],
                             },
@@ -1073,7 +1073,7 @@
                 children: [
                   {
                     element: "i",
-                    className: "fas fa-spinner fa-pulse",
+                    className: "fa-solid fa-spinner fa-pulse",
                   },
                   {
                     style: "margin-left: 0.4em;",
@@ -1196,7 +1196,7 @@
                       {
                         className: "control",
                         children: {
-                          className: "button is-dark is-outlined is-small",
+                          className: "button is-small",
                           onclick: () => resultUi.downloadApiResultJson(api),
                           text: "json",
                           title: `Download results of ${api} API as JSON file.`,
@@ -1206,7 +1206,7 @@
                         ? {
                             className: "control",
                             children: {
-                              className: "button is-dark is-outlined is-small",
+                              className: "button is-small",
                               disabled: !isDone,
                               onclick: () => resultUi.openHtmlReport(api),
                               text: "report",
@@ -1355,7 +1355,7 @@
                       className: "column is-3",
                       children: {
                         className:
-                          "button is-dark is-outlined is-small is-fullwidth",
+                          "button is-small is-fullwidth",
                         onClick: resultUi.downloadResults,
                         disabled: status.status !== "completed",
                         children: [
@@ -1364,7 +1364,7 @@
                             className: "icon",
                             children: {
                               element: "i",
-                              className: "fas fa-file-archive",
+                              className: "fa-solid fa-file-archive",
                             },
                           },
                           { element: "span", text: "Download Zip" },
@@ -1403,7 +1403,7 @@
                       className: "column is-3",
                       children: {
                         className:
-                          "button is-dark is-outlined is-small is-fullwidth",
+                          "button is-small is-fullwidth",
                         onclick: resultUi.downloadFinishedApiJsons,
                         children: [
                           {
@@ -1411,7 +1411,7 @@
                             className: "icon",
                             children: {
                               element: "i",
-                              className: "fas fa-file-archive",
+                              className: "fa-solid fa-file-archive",
                             },
                           },
                           { element: "span", text: "Download Zip" },
@@ -1450,7 +1450,7 @@
                       className: "column is-3",
                       children: {
                         className:
-                          "button is-dark is-outlined is-small is-fullwidth",
+                          "button is-small is-fullwidth",
                         onClick: resultUi.downloadHtmlZip,
                         children: [
                           {
@@ -1458,7 +1458,7 @@
                             className: "icon",
                             children: {
                               element: "i",
-                              className: "fas fa-code",
+                              className: "fa-solid fa-code",
                             },
                           },
                           { element: "span", text: "Download HTML" },
@@ -1510,7 +1510,7 @@
                         ? null
                         : {
                             element: "button",
-                            className: "button is-dark is-outlined is-small",
+                            className: "button is-small",
                             onClick: () =>
                               resultUi.removeMalfunctioningTest(path),
                             title: "Remove from malfunctioning tests list.",
@@ -1521,7 +1521,7 @@
                                 children: [
                                   {
                                     element: "i",
-                                    className: "fas fa-trash-alt",
+                                    className: "fa-solid fa-trash-alt",
                                   },
                                 ],
                               },

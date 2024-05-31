@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Session Configuration - Web Platform Test</title>
-    <link rel="stylesheet" href="css/bulma-0.7.5/bulma.min.css" />
-    <link rel="stylesheet" href="css/fontawesome-5.7.2.min.css" />
+    <link rel="stylesheet" href="css/bulma-1.0.0/bulma.min.css" />
+    <link rel="stylesheet" href="css/fontawesome-6.5.2.min.css" />
     <script src="lib/utils.js"></script>
     <script src="lib/wave-service.js"></script>
     <script src="lib/ui.js"></script>
@@ -14,6 +14,7 @@
       .site-logo {
         max-width: 300px;
         margin: 0 0 30px -15px;
+        border-radius: 3px;
       }
     </style>
   </head>
@@ -160,11 +161,9 @@
           state.testSubsets = [];
           WaveService.readTestSubsets(function (subsets) {
             state.testSubsets = subsets;
-            WaveService.readTestList(
-              function (readTests) {
-                state.tests = readTests;
-              }
-            );
+            WaveService.readTestList(function (readTests) {
+              state.tests = readTests;
+            });
             try {
               renderApisField();
             } catch (_) {}
@@ -688,7 +687,7 @@
                     children: {
                       className: "control",
                       children: {
-                        className: "button is-dark is-outlined",
+                        className: "button",
                         children: [
                           {
                             element: "span",
@@ -880,13 +879,13 @@
                                   },
                                   {
                                     className:
-                                      "button is-dark is-outlined is-small is-rounded control",
+                                      "button is-small is-rounded",
                                     text: "save",
                                     onClick: addLabel,
                                   },
                                   {
                                     className:
-                                      "button is-dark is-outlined is-small is-rounded control",
+                                      "button is-small is-rounded",
                                     text: "cancel",
                                     onClick: hideAddLabel,
                                   },
@@ -959,14 +958,17 @@
                           id: "api-error",
                         },
                         {
-                          element: "ul",
-                          className: "menu-list",
-                          children: apis.map(function (api) {
-                            return UI.createElement({
-                              element: "li",
-                              id: api.title,
-                            });
-                          }),
+                          className: "menu",
+                          children: {
+                            element: "ul",
+                            className: "menu-list",
+                            children: apis.map(function (api) {
+                              return UI.createElement({
+                                element: "li",
+                                id: api.title,
+                              });
+                            }),
+                          },
                         },
                       ],
                     },

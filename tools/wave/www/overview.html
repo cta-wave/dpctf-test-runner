@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Overview - Web Platform Test</title>
-    <link rel="stylesheet" href="css/bulma-0.7.5/bulma.min.css" />
-    <link rel="stylesheet" href="css/fontawesome-5.7.2.min.css" />
+    <link rel="stylesheet" href="css/bulma-1.0.0/bulma.min.css" />
+    <link rel="stylesheet" href="css/fontawesome-6.5.2.min.css" />
     <script src="lib/utils.js"></script>
     <script src="lib/wave-service.js"></script>
     <script src="lib/ui.js"></script>
@@ -466,7 +466,7 @@
                         children: {
                           className: "control",
                           children: {
-                            className: "button is-dark is-outlined",
+                            className: "button",
                             children: [
                               {
                                 element: "span",
@@ -503,7 +503,7 @@
                     style: "text-align: right",
                     children: [
                       {
-                        className: "button is-dark is-outlined",
+                        className: "button",
                         disabled: true,
                         id: "compare-button",
                         children: [
@@ -605,7 +605,7 @@
                     children: {
                       className: "control",
                       children: {
-                        className: "button is-dark is-outlined",
+                        className: "button",
                         disabled: !importSessionFile,
                         children: [
                           {
@@ -923,13 +923,13 @@
                                   },
                                   {
                                     className:
-                                      "button is-dark is-outlined is-small is-rounded control",
+                                      "button is-small is-rounded",
                                     text: "save",
                                     onClick: resultsUi.addFilterLabel
                                   },
                                   {
                                     className:
-                                      "button is-dark is-outlined is-small is-rounded control",
+                                      "buttonis-small is-rounded",
                                     text: "cancel",
                                     onClick: resultsUi.hideAddFilterLabel
                                   }
@@ -1237,7 +1237,7 @@
                           className: "is-paddingless",
                           children: [
                             {
-                              className: "button is-dark is-outlined is-small",
+                              className: "button is-small",
                               title: pinned ? "Unpin session" : "Pin session",
                               style: "margin: 5px",
                               children: [
@@ -1274,7 +1274,7 @@
                           className: "is-paddingless",
                           children: [
                             {
-                              className: "button is-dark is-outlined is-small",
+                              className: "button is-small",
                               title: "Remove session from list",
                               style: "margin: 5px",
                               children: [
