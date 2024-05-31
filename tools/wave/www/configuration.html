@@ -262,6 +262,7 @@
           } else {
             tests.include.push(path);
           }
+          state.activeSubset = "";
         }
 
         function handleRemoveIncludedTest(path) {
@@ -275,6 +276,7 @@
             var index = tests.include.findIndex((test) => test === path);
             tests.include.splice(index, 1);
           }
+          state.activeSubset = "";
         }
 
         function getIncludedRatio(path) {
@@ -304,6 +306,7 @@
           } else {
             tests.include = apis.map((api) => api.path);
           }
+          state.activeSubset = "All";
         }
 
         function deselectAllTests() {
@@ -324,6 +327,7 @@
         }
 
         function applyDefaultFilters() {
+          state.activeSubset = "";
           const subsets = state.testSubsets;
           for (let subset of subsets) {
             if (!subset.tag) continue;
@@ -347,6 +351,7 @@
             .filter((test) => subset.tests.indexOf(test.path) !== -1)
             .filter((test) => !isTestDisabled(test))
             .forEach((test) => tests.include.push(test.path));
+          state.activeSubset = subset.title;
         }
 
         function hasTestType(value) {
@@ -463,8 +468,10 @@
             .filter((test) => !isTestDisabled(test))
             .map((test) => test.path)
             .filter((test) => tests.include.indexOf(test) !== -1);
+          state.activeSubset = "";
           renderFiltersField();
           renderApisList(apis);
+          renderApisField();
           checkApiList();
         }
 
@@ -1037,7 +1044,7 @@
                   children: {
                     className: "field is-grouped is-grouped-multiline",
                     children: getTags().map((tag) =>
-                      createFilterButton(
+                      createSelectButton(
                         tag.text,
                         () => toggleFilter(tag.text),
                         isFilterActive(tag.text)
@@ -1065,10 +1072,14 @@
                     {
                       style: "margin-top: 0.3em",
                       children: [
-                        createSelectButton("All", function () {
-                          selectAllTests();
-                          renderApisField();
-                        }),
+                        createSelectButton(
+                          "All",
+                          function () {
+                            selectAllTests();
+                            renderApisField();
+                          },
+                          state.activeSubset === "All"
+                        ),
                         createSelectButton("None", function () {
                           deselectAllTests();
                           renderApisField();
@@ -1084,7 +1095,8 @@
                             function () {
                               selectSubset(subset);
                               renderApisField();
-                            }
+                            },
+                            state.activeSubset === subset.title
                           );
                           button.style = "margin: 0.3em 0.3em 0 0";
                           return button;
@@ -1166,6 +1178,7 @@
                     handleAddIncludedTest(api.path);
                   }
                   renderApiList(api);
+                  renderApisField();
                 },
               },
               detailedTestSelectionEnabled
@@ -1240,6 +1253,7 @@
                   if (disabled) return;
                   handleIncludedTestToggle(test.path);
                   renderApiList(api);
+                  renderApisField();
                   checkApiList();
                 },
                 children: [
@@ -1737,17 +1751,7 @@
           }));
         }
 
-        function createSelectButton(text, onSelect) {
-          return {
-            element: "button",
-            style: "margin-right: 0.3em",
-            className: "button is-rounded is-small",
-            text: text,
-            onClick: onSelect,
-          };
-        }
-
-        function createFilterButton(text, onSelect, isSelected) {
+        function createSelectButton(text, onSelect, isSelected) {
           return {
             element: "button",
             style: "margin-right: 0.3em",
