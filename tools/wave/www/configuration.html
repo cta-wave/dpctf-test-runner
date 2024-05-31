@@ -20,61 +20,6 @@
   </head>
   <body>
     <script>
-      //      var apis = [
-      //        { title: "2D Context", path: "/2dcontext" },
-      //        { title: "Content Security Policy", path: "/content-security-policy" },
-      //        { title: "CSS", path: "/css" },
-      //        { title: "DOM", path: "/dom" },
-      //        { title: "ECMAScript", path: "/ecmascript" },
-      //        { title: "Encrypted media", path: "/encrypted-media" },
-      //        { title: "Fetch", path: "/fetch" },
-      //        { title: "FileAPI", path: "/FileAPI" },
-      //        { title: "Fullscreen", path: "/fullscreen" },
-      //        { title: "WebGL", path: "/webgl" },
-      //        { title: "HTML", path: "/html" },
-      //        { title: "IndexedDB", path: "/IndexedDB" },
-      //        { title: "Media Source", path: "/media-source" },
-      //        { title: "Notifications", path: "/notifications" },
-      //        { title: "Page Visibility", path: "/page-visibility" },
-      //        { title: "Service Workers", path: "/service-workers" },
-      //        { title: "UI Events", path: "/uievents" },
-      //        { title: "WAVE Extra", path: "/wave-extra" },
-      //        { title: "Webaudio", path: "/webaudio" },
-      //        { title: "WebCryptoAPI", path: "/WebCryptoAPI" },
-      //        { title: "Webmessaging", path: "/webmessaging" },
-      //        { title: "Websockets", path: "/websockets" },
-      //        { title: "Webstorage", path: "/webstorage" },
-      //        { title: "Workers", path: "/workers" },
-      //        { title: "XHR", path: "/xhr" }
-      //      ];
-
-      //      var referenceSessions = [
-      //        {
-      //          title: "Edge 44.17763",
-      //          engine: "",
-      //          token: "b2924d20-6a93-11e9-98b4-a11fb92a6d1c",
-      //          icon: "fab fa-edge"
-      //        },
-      //        {
-      //          title: "Firefox 64.0",
-      //          engine: "Gecko 64.0",
-      //          token: "bb7aafa0-6a92-11e9-8ec2-04f58dad2e4f",
-      //          icon: "fab fa-firefox"
-      //        },
-      //        {
-      //          title: "WebKit 605.1.15",
-      //          engine: "Revision 239158",
-      //          token: "caf823e0-6a92-11e9-b732-3188d0065ebc",
-      //          icon: "fab fa-safari"
-      //        },
-      //        {
-      //          title: "Chromium 73.0.3640.0",
-      //          engine: "Blink 537.36",
-      //          token: "a50c6db0-6a94-11e9-8d1b-e23fc4555885",
-      //          icon: "fab fa-chrome"
-      //        }
-      //      ];
-
       var detailedTestSelectionEnabled = true;
 
       window.onload = function () {
@@ -97,8 +42,12 @@
         loadServerStatus();
         loadSessionData(token, function () {
           loadPublicSessionData();
+          loadTestSubsets(function (subsets) {
+            addTagsToTests(subsets);
+            applyDefaultFilters();
+            render();
+          });
         });
-        loadTestSubsets(addTagsToTests);
         render();
 
         function loadServerStatus() {
@@ -162,8 +111,27 @@
           state.activeFilters = [];
           WaveService.readTestSubsets(function (subsets) {
             state.testSubsets = subsets;
-            loadTests(() => callback(subsets));
-            applyDefaultFilters();
+            loadTests(() => {
+              const tests = Object.keys(state.tests)
+                .map((api) => state.tests[api])
+                .reduce((tests, api) => tests.concat(api), [])
+                .map((test) => test.path);
+              for (let subset of subsets) {
+                for (let test of subset.tests) {
+                  if (test.indexOf("*") === -1) continue;
+                  let regex = new RegExp(
+                    test.replaceAll("*", ".*").replaceAll("/", "\/")
+                  );
+                  for (let test of tests) {
+                    if (!regex.test(test)) continue;
+                    if (subset.tests.indexOf(test) !== -1) continue;
+                    subset.tests.push(test);
+                  }
+                  subset.tests.slice(subset.tests.indexOf(test), 1);
+                }
+              }
+              callback(subsets);
+            });
             try {
               renderApisField();
             } catch (_) {}
@@ -363,12 +331,22 @@
             state.activeFilters.push(subset.tag.text);
           }
           selectAllTests();
+          for (let subset of subsets) {
+            if (!subset.default_subset) continue;
+            selectSubset(subset);
+            break;
+          }
         }
 
         function selectSubset(subset) {
           var tests = state.configuration.tests;
           tests.include = [];
-          subset.tests.forEach((test) => tests.include.push(test));
+          Object.keys(state.tests)
+            .map((api) => state.tests[api])
+            .reduce((tests, api) => tests.concat(api), [])
+            .filter((test) => subset.tests.indexOf(test.path) !== -1)
+            .filter((test) => !isTestDisabled(test))
+            .forEach((test) => tests.include.push(test.path));
         }
 
         function hasTestType(value) {
@@ -491,6 +469,7 @@
         }
 
         function getSelectedTagMessages() {
+          if (!state.testSubsets) return [];
           var includedTests = state.configuration.tests.include;
           var messages = [];
           for (var subset of state.testSubsets) {
@@ -506,6 +485,7 @@
         }
 
         function getTags() {
+          if (!state.testSubsets) return [];
           var tagSubsets = state.testSubsets.filter((subset) => !!subset.tag);
           var tags = tagSubsets.map((subset) => subset.tag);
           return tags;
@@ -1011,14 +991,12 @@
                                       event.keyCode === 13 ? addLabel() : null,
                                   },
                                   {
-                                    className:
-                                      "button is-small is-rounded",
+                                    className: "button is-small is-rounded",
                                     text: "save",
                                     onClick: addLabel,
                                   },
                                   {
-                                    className:
-                                      "button is-small is-rounded",
+                                    className: "button is-small is-rounded",
                                     text: "cancel",
                                     onClick: hideAddLabel,
                                   },
@@ -1099,7 +1077,7 @@
                     },
                     {
                       children: state.testSubsets
-                        .filter((subset) => !!subset.title)
+                        ?.filter((subset) => !!subset.title)
                         .map((subset) => {
                           var button = createSelectButton(
                             subset.title,
