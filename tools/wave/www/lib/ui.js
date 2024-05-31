@@ -1,10 +1,10 @@
 const UI = {
-  createElement: config => {
+  createElement: (config) => {
     if (!config) return;
     const elementType = config.element || "div";
     const element = document.createElement(elementType);
 
-    Object.keys(config).forEach(property => {
+    Object.keys(config).forEach((property) => {
       const value = config[property];
       switch (property.toLowerCase()) {
         case "id":
@@ -47,7 +47,7 @@ const UI = {
           return;
         case "children":
           if (value instanceof Array) {
-            value.forEach(child => {
+            value.forEach((child) => {
               const childElement =
                 child instanceof Element ? child : UI.createElement(child);
               if (!childElement) return;
@@ -75,26 +75,40 @@ const UI = {
     });
     return element;
   },
-  getElement: id => {
+  getElement: (id) => {
     return document.getElementById(id);
   },
   getRoot: () => {
     return document.getElementsByTagName("body")[0];
   },
   scrollPositions: {},
-  saveScrollPosition: elementId => {
+  saveScrollPosition: (elementId) => {
     let scrollElement = UI.getElement(elementId);
     if (!scrollElement) return;
     UI.scrollPositions[elementId] = {
       scrollLeft: scrollElement.scrollLeft,
-      scrollRight: scrollElement.scrollRight
+      scrollRight: scrollElement.scrollRight,
     };
   },
-  loadScrollPosition: elementId => {
+  loadScrollPosition: (elementId) => {
     let scrollElement = UI.getElement(elementId);
     if (!scrollElement) return;
     if (!UI.scrollPositions[elementId]) return;
     scrollElement.scrollLeft = UI.scrollPositions[elementId].scrollLeft;
     scrollElement.scrollRight = UI.scrollPositions[elementId].scrollRight;
-  }
+  },
+  hasClass(element, className) {
+    return !!element.className.match(new RegExp("(\\s|^)" + className + "(\\s|$)"));
+  },
+
+  addClass(element, className) {
+    if (!UI.hasClass(element, className)) element.className += " " + className;
+  },
+
+  removeClass(element, className) {
+    if (UI.hasClass(element, className)) {
+      var reg = new RegExp("(\\s|^)" + className + "(\\s|$)");
+      element.className = element.className.replace(reg, " ");
+    }
+  },
 };

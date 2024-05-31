@@ -20,61 +20,6 @@
   </head>
   <body>
     <script>
-      //      var apis = [
-      //        { title: "2D Context", path: "/2dcontext" },
-      //        { title: "Content Security Policy", path: "/content-security-policy" },
-      //        { title: "CSS", path: "/css" },
-      //        { title: "DOM", path: "/dom" },
-      //        { title: "ECMAScript", path: "/ecmascript" },
-      //        { title: "Encrypted media", path: "/encrypted-media" },
-      //        { title: "Fetch", path: "/fetch" },
-      //        { title: "FileAPI", path: "/FileAPI" },
-      //        { title: "Fullscreen", path: "/fullscreen" },
-      //        { title: "WebGL", path: "/webgl" },
-      //        { title: "HTML", path: "/html" },
-      //        { title: "IndexedDB", path: "/IndexedDB" },
-      //        { title: "Media Source", path: "/media-source" },
-      //        { title: "Notifications", path: "/notifications" },
-      //        { title: "Page Visibility", path: "/page-visibility" },
-      //        { title: "Service Workers", path: "/service-workers" },
-      //        { title: "UI Events", path: "/uievents" },
-      //        { title: "WAVE Extra", path: "/wave-extra" },
-      //        { title: "Webaudio", path: "/webaudio" },
-      //        { title: "WebCryptoAPI", path: "/WebCryptoAPI" },
-      //        { title: "Webmessaging", path: "/webmessaging" },
-      //        { title: "Websockets", path: "/websockets" },
-      //        { title: "Webstorage", path: "/webstorage" },
-      //        { title: "Workers", path: "/workers" },
-      //        { title: "XHR", path: "/xhr" }
-      //      ];
-
-      //      var referenceSessions = [
-      //        {
-      //          title: "Edge 44.17763",
-      //          engine: "",
-      //          token: "b2924d20-6a93-11e9-98b4-a11fb92a6d1c",
-      //          icon: "fab fa-edge"
-      //        },
-      //        {
-      //          title: "Firefox 64.0",
-      //          engine: "Gecko 64.0",
-      //          token: "bb7aafa0-6a92-11e9-8ec2-04f58dad2e4f",
-      //          icon: "fab fa-firefox"
-      //        },
-      //        {
-      //          title: "WebKit 605.1.15",
-      //          engine: "Revision 239158",
-      //          token: "caf823e0-6a92-11e9-b732-3188d0065ebc",
-      //          icon: "fab fa-safari"
-      //        },
-      //        {
-      //          title: "Chromium 73.0.3640.0",
-      //          engine: "Blink 537.36",
-      //          token: "a50c6db0-6a94-11e9-8d1b-e23fc4555885",
-      //          icon: "fab fa-chrome"
-      //        }
-      //      ];
-
       var detailedTestSelectionEnabled = true;
 
       window.onload = function () {
@@ -97,8 +42,12 @@
         loadServerStatus();
         loadSessionData(token, function () {
           loadPublicSessionData();
+          loadTestSubsets(function (subsets) {
+            addTagsToTests(subsets);
+            applyDefaultFilters();
+            render();
+          });
         });
-        loadTestSubsets();
         render();
 
         function loadServerStatus() {
@@ -157,16 +106,45 @@
           );
         }
 
-        function loadTestSubsets() {
+        function loadTestSubsets(callback) {
           state.testSubsets = [];
+          state.activeFilters = [];
           WaveService.readTestSubsets(function (subsets) {
             state.testSubsets = subsets;
-            WaveService.readTestList(function (readTests) {
-              state.tests = readTests;
+            loadTests(() => {
+              const tests = Object.keys(state.tests)
+                .map((api) => state.tests[api])
+                .reduce((tests, api) => tests.concat(api), [])
+                .map((test) => test.path);
+              for (let subset of subsets) {
+                for (let test of subset.tests) {
+                  if (test.indexOf("*") === -1) continue;
+                  let regex = new RegExp(
+                    test.replaceAll("*", ".*").replaceAll("/", "\/")
+                  );
+                  for (let test of tests) {
+                    if (!regex.test(test)) continue;
+                    if (subset.tests.indexOf(test) !== -1) continue;
+                    subset.tests.push(test);
+                  }
+                  subset.tests.slice(subset.tests.indexOf(test), 1);
+                }
+              }
+              callback(subsets);
             });
             try {
               renderApisField();
             } catch (_) {}
+          });
+        }
+
+        function loadTests(callback) {
+          WaveService.readTestList(function (readTests) {
+            state.tests = {};
+            for (let api in readTests) {
+              state.tests[api] = readTests[api].map((test) => ({ path: test }));
+            }
+            callback();
           });
         }
 
@@ -276,10 +254,15 @@
             tests.include = tests.include.filter(function (test) {
               return !test.match(new RegExp("^" + path));
             });
-            tests.include = tests.include.concat(state.tests[path.substr(1)]);
+            tests.include = tests.include.concat(
+              state.tests[path.substr(1)]
+                .filter((test) => !isTestDisabled(test))
+                .map((test) => test.path)
+            );
           } else {
             tests.include.push(path);
           }
+          state.activeSubset = "";
         }
 
         function handleRemoveIncludedTest(path) {
@@ -293,6 +276,7 @@
             var index = tests.include.findIndex((test) => test === path);
             tests.include.splice(index, 1);
           }
+          state.activeSubset = "";
         }
 
         function getIncludedRatio(path) {
@@ -313,11 +297,16 @@
           if (state.tests) {
             tests.include = [];
             for (var api in state.tests) {
-              tests.include = tests.include.concat(state.tests[api]);
+              tests.include = tests.include.concat(
+                state.tests[api]
+                  .filter((test) => !isTestDisabled(test))
+                  .map((test) => test.path)
+              );
             }
           } else {
             tests.include = apis.map((api) => api.path);
           }
+          state.activeSubset = "All";
         }
 
         function deselectAllTests() {
@@ -325,9 +314,44 @@
           configuration.tests.include = [];
         }
 
+        function addTagsToTests(subsets) {
+          for (let subset of subsets.filter((subset) => !!subset.tag)) {
+            for (let subsetTest of subset.tests) {
+              const api = subsetTest.match(/^\/([^\/]*)/)[1];
+              const tests = state.tests[api];
+              const test = tests.find((test) => test.path === subsetTest);
+              if (!test.tags) test.tags = [];
+              test.tags.push(subset.tag);
+            }
+          }
+        }
+
+        function applyDefaultFilters() {
+          state.activeSubset = "";
+          const subsets = state.testSubsets;
+          for (let subset of subsets) {
+            if (!subset.tag) continue;
+            if (!subset.tag.default_filter) continue;
+            state.activeFilters.push(subset.tag.text);
+          }
+          selectAllTests();
+          for (let subset of subsets) {
+            if (!subset.default_subset) continue;
+            selectSubset(subset);
+            break;
+          }
+        }
+
         function selectSubset(subset) {
           var tests = state.configuration.tests;
-          tests.include = subset.tests;
+          tests.include = [];
+          Object.keys(state.tests)
+            .map((api) => state.tests[api])
+            .reduce((tests, api) => tests.concat(api), [])
+            .filter((test) => subset.tests.indexOf(test.path) !== -1)
+            .filter((test) => !isTestDisabled(test))
+            .forEach((test) => tests.include.push(test.path));
+          state.activeSubset = subset.title;
         }
 
         function hasTestType(value) {
@@ -404,6 +428,80 @@
           return true;
         }
 
+        function isTagSelected(tag) {
+          var includedTests = state.configuration.tests.include;
+          var tagSubsets = state.testSubsets.filter((subset) => !!subset.tag);
+          for (var subset of tagSubsets) {
+            for (var test of includedTests) {
+              if (test.indexOf(tag) !== -1) return true;
+            }
+          }
+          return false;
+        }
+
+        function isTestDisabled(test) {
+          const activeFilters = state.activeFilters;
+          if (activeFilters.length === 0) return false;
+          if (!test.tags) return true;
+          for (let tag of test.tags) {
+            if (activeFilters.indexOf(tag.text) === -1) continue;
+            return false;
+          }
+          return true;
+        }
+
+        function isFilterActive(filter) {
+          return state.activeFilters.indexOf(filter) !== -1;
+        }
+
+        function toggleFilter(filter) {
+          const idx = state.activeFilters.indexOf(filter);
+          if (idx === -1) {
+            state.activeFilters.push(filter);
+          } else {
+            state.activeFilters.splice(idx, 1);
+          }
+          const tests = state.configuration.tests;
+          tests.include = Object.keys(state.tests)
+            .map((api) => state.tests[api])
+            .reduce((tests, api) => tests.concat(api), [])
+            .filter((test) => !isTestDisabled(test))
+            .map((test) => test.path)
+            .filter((test) => tests.include.indexOf(test) !== -1);
+          state.activeSubset = "";
+          renderFiltersField();
+          renderApisList(apis);
+          renderApisField();
+          checkApiList();
+        }
+
+        function getSelectedTagMessages() {
+          if (!state.testSubsets) return [];
+          var includedTests = state.configuration.tests.include;
+          var messages = [];
+          for (var subset of state.testSubsets) {
+            if (!subset.tag) continue;
+            if (!subset.message) continue;
+            for (var test of includedTests) {
+              if (subset.tests.indexOf(test) === -1) continue;
+              messages.push(subset.message);
+              break;
+            }
+          }
+          return messages;
+        }
+
+        function getTags() {
+          if (!state.testSubsets) return [];
+          var tagSubsets = state.testSubsets.filter((subset) => !!subset.tag);
+          var tags = tagSubsets.map((subset) => subset.tag);
+          return tags;
+        }
+
+        function getFilterSubsets() {
+          return state.testSubsets.filter((subset) => !!subset.filter);
+        }
+
         function isSessionStarting() {
           return state.isStarting;
         }
@@ -419,6 +517,24 @@
                 )
               )
             );
+          }
+          if (apiErrorElement.children.length === 0) {
+            UI.addClass(apiErrorElement, "is-hidden");
+          } else {
+            UI.removeClass(apiErrorElement, "is-hidden");
+          }
+
+          var messagesElement = UI.getElement("messages");
+          messagesElement.innerHTML = "";
+          for (var message of getSelectedTagMessages()) {
+            messagesElement.appendChild(
+              UI.createElement(createMessage(message))
+            );
+          }
+          if (messagesElement.children.length === 0) {
+            UI.addClass(messagesElement, "is-hidden");
+          } else {
+            UI.removeClass(messagesElement, "is-hidden");
           }
           renderButtonsField();
         }
@@ -740,6 +856,9 @@
                   id: "labels-field",
                 },
                 {
+                  id: "filters-field",
+                },
+                {
                   id: "apis-field",
                 },
                 {
@@ -762,6 +881,7 @@
           renderTokenField();
           renderExpirationField();
           renderLabelsField();
+          renderFiltersField();
           renderApisField();
           renderExcludeField();
           renderTypesField();
@@ -878,14 +998,12 @@
                                       event.keyCode === 13 ? addLabel() : null,
                                   },
                                   {
-                                    className:
-                                      "button is-small is-rounded",
+                                    className: "button is-small is-rounded",
                                     text: "save",
                                     onClick: addLabel,
                                   },
                                   {
-                                    className:
-                                      "button is-small is-rounded",
+                                    className: "button is-small is-rounded",
                                     text: "cancel",
                                     onClick: hideAddLabel,
                                   },
@@ -908,6 +1026,38 @@
           );
         }
 
+        function renderFiltersField() {
+          var configuration = state.configuration;
+          var filtersField = UI.getElement("filters-field");
+
+          filtersField.parentNode.replaceChild(
+            UI.createElement({
+              id: "filters-field",
+              className: "field is-horizontal",
+              children: [
+                {
+                  className: "field-label",
+                  children: { className: "label", text: "Filters" },
+                },
+                {
+                  className: "field-body",
+                  children: {
+                    className: "field is-grouped is-grouped-multiline",
+                    children: getTags().map((tag) =>
+                      createSelectButton(
+                        tag.text,
+                        () => toggleFilter(tag.text),
+                        isFilterActive(tag.text)
+                      )
+                    ),
+                  },
+                },
+              ],
+            }),
+            filtersField
+          );
+        }
+
         function renderApisField() {
           var apisField = UI.getElement("apis-field");
           apisField.parentNode.replaceChild(
@@ -922,10 +1072,14 @@
                     {
                       style: "margin-top: 0.3em",
                       children: [
-                        createSelectButton("All", function () {
-                          selectAllTests();
-                          renderApisField();
-                        }),
+                        createSelectButton(
+                          "All",
+                          function () {
+                            selectAllTests();
+                            renderApisField();
+                          },
+                          state.activeSubset === "All"
+                        ),
                         createSelectButton("None", function () {
                           deselectAllTests();
                           renderApisField();
@@ -933,17 +1087,20 @@
                       ],
                     },
                     {
-                      children: state.testSubsets.map((subset) => {
-                        var button = createSelectButton(
-                          subset.title,
-                          function () {
-                            selectSubset(subset);
-                            renderApisField();
-                          }
-                        );
-                        button.style = "margin: 0.3em 0.3em 0 0";
-                        return button;
-                      }),
+                      children: state.testSubsets
+                        ?.filter((subset) => !!subset.title)
+                        .map((subset) => {
+                          var button = createSelectButton(
+                            subset.title,
+                            function () {
+                              selectSubset(subset);
+                              renderApisField();
+                            },
+                            state.activeSubset === subset.title
+                          );
+                          button.style = "margin: 0.3em 0.3em 0 0";
+                          return button;
+                        }),
                     },
                   ],
                 },
@@ -956,6 +1113,11 @@
                       children: [
                         {
                           id: "api-error",
+                          className: "mb-5 is-hidden",
+                        },
+                        {
+                          id: "messages",
+                          className: "mb-5 is-hidden",
                         },
                         {
                           className: "menu",
@@ -999,6 +1161,7 @@
               state.expandedApis[api.path] = !state.expandedApis[api.path];
               renderApiList(api);
             },
+            className: "columns is-mobile is-gapless is-vcentered mb-0",
             children: [
               {
                 element: "input",
@@ -1006,6 +1169,7 @@
                 style: "width: 1.3em; height: 1.3em;vertical-align: middle;",
                 checked: includedRatio > 0,
                 indeterminate: includedRatio > 0 && includedRatio < 1,
+                className: "column is-narrow",
                 onclick: function (event) {
                   event.stopPropagation();
                   if (includedRatio > 0) {
@@ -1014,6 +1178,7 @@
                     handleAddIncludedTest(api.path);
                   }
                   renderApiList(api);
+                  renderApisField();
                 },
               },
               detailedTestSelectionEnabled
@@ -1021,6 +1186,7 @@
                     element: "span",
                     style:
                       "display: inline-block;vertical-align: middle;margin-left:0.3em;width: 0.7em",
+                    className: "column is-narrow",
                     children: {
                       element: "i",
                       className:
@@ -1032,8 +1198,9 @@
                 : null,
               {
                 style:
-                  "display: inline-block;vertical-align: middle;margin-left:0.3em;width: 90%",
+                  "display: flex;vertical-align: middle;margin-left:0.3em;",
                 text: api.title,
+                className: "column",
               },
             ],
           };
@@ -1042,14 +1209,20 @@
           if (state.expandedApis && state.expandedApis[api.path]) {
             listItem.appendChild(createApiTestsList(api));
           }
-          checkApiList();
+        }
+
+        function createTag(options) {
+          return {
+            element: "span",
+            className: "tag ml-1 is-" + options.color,
+            text: options.text,
+          };
         }
 
         function createApiTestsList(api) {
           if (!state.tests) {
-            WaveService.readTestList(
+            loadTests(
               function (readTests) {
-                state.tests = readTests;
                 for (var api in state.tests) {
                   if (hasIncludedTest("/" + api)) {
                     handleRemoveIncludedTest("/" + api);
@@ -1069,34 +1242,51 @@
 
             testListView.children = testListView.children.concat(
               tests.sort().map(function (test) {
-                return {
-                  element: "li",
-                  onclick: function (event) {
-                    handleIncludedTestToggle(test);
-                    renderApiList(api);
-                  },
-                  children: [
-                    {
-                      element: "a",
-                      children: [
-                        {
-                          element: "input",
-                          type: "checkbox",
-                          style:
-                            "width: 1.3em; height: 1.3em;vertical-align: middle;",
-                          checked: hasIncludedTest(test),
-                        },
-                        {
-                          style:
-                            "display: inline-block;vertical-align: middle;margin-left:0.3em;max-width: 90%",
-                          text: test,
-                        },
-                      ],
-                    },
-                  ],
-                };
+                return createTestListItem(test, isTestDisabled(test));
               })
             );
+
+            function createTestListItem(test, disabled) {
+              return {
+                element: "li",
+                onclick: function (event) {
+                  if (disabled) return;
+                  handleIncludedTestToggle(test.path);
+                  renderApiList(api);
+                  renderApisField();
+                  checkApiList();
+                },
+                children: [
+                  {
+                    element: "a",
+                    className: "columns is-mobile is-gapless is-vcentered mb-0",
+                    children: [
+                      {
+                        element: "input",
+                        type: "checkbox",
+                        style:
+                          "width: 1.3em; height: 1.3em;vertical-align: middle;",
+                        checked: hasIncludedTest(test.path),
+                        class: "column is-narrow",
+                        disabled,
+                      },
+                      {
+                        style:
+                          "display: inline-block;vertical-align: middle;margin-left:0.3em;max-width: 90%",
+                        text: test.path,
+                        className:
+                          "column" + (disabled ? " has-text-grey" : ""),
+                      },
+                      {
+                        element: "span",
+                        className: "column is-narrow",
+                        children: test.tags?.map(createTag),
+                      },
+                    ],
+                  },
+                ],
+              };
+            }
             return UI.createElement(testListView);
           }
         }
@@ -1561,11 +1751,12 @@
           }));
         }
 
-        function createSelectButton(text, onSelect) {
+        function createSelectButton(text, onSelect, isSelected) {
           return {
             element: "button",
             style: "margin-right: 0.3em",
-            className: "button is-rounded is-small",
+            className:
+              "button is-rounded is-small" + (isSelected ? " is-info" : ""),
             text: text,
             onClick: onSelect,
           };
@@ -1579,6 +1770,27 @@
               {
                 className: "message-body",
                 text: message,
+              },
+            ],
+          };
+        }
+
+        function createMessage(message) {
+          var text = message.text || "";
+          var color = message.color || "warning";
+          var linkRegex = /\[([^\]]+)]\(([^)]*)\)/g;
+          for (const match of text.matchAll(linkRegex)) {
+            var htmlLink =
+              '<a target="_blank" href="' + match[2] + '">' + match[1] + "</a>";
+            text = text.replace(match[0], htmlLink);
+          }
+          return {
+            element: "article",
+            className: "message is-" + color,
+            children: [
+              {
+                className: "message-body",
+                html: text,
               },
             ],
           };
