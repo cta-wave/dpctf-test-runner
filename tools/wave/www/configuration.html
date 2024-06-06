@@ -39,6 +39,7 @@
           { title: "Manual", value: "manual" },
         ];
         var state = {};
+        resetActiveSubset();
         loadServerStatus();
         loadSessionData(token, function () {
           loadPublicSessionData();
@@ -262,7 +263,7 @@
           } else {
             tests.include.push(path);
           }
-          state.activeSubset = "";
+          resetActiveSubset();
         }
 
         function handleRemoveIncludedTest(path) {
@@ -276,7 +277,7 @@
             var index = tests.include.findIndex((test) => test === path);
             tests.include.splice(index, 1);
           }
-          state.activeSubset = "";
+          resetActiveSubset();
         }
 
         function getIncludedRatio(path) {
@@ -306,12 +307,17 @@
           } else {
             tests.include = apis.map((api) => api.path);
           }
-          state.activeSubset = "All";
+          state.activeSubset = { title: "All" };
+        }
+
+        function resetActiveSubset() {
+          state.activeSubset = { title: "", tests: [] };
         }
 
         function deselectAllTests() {
           var configuration = state.configuration;
           configuration.tests.include = [];
+          state.activeSubset = { title: "None" };
         }
 
         function addTagsToTests(subsets) {
@@ -327,7 +333,7 @@
         }
 
         function applyDefaultFilters() {
-          state.activeSubset = "";
+          resetActiveSubset();
           const subsets = state.testSubsets;
           for (let subset of subsets) {
             if (!subset.tag) continue;
@@ -343,6 +349,8 @@
         }
 
         function selectSubset(subset) {
+          if (subset.title === "All") return selectAllTests();
+          if (subset.title === "None") return deselectAllTests();
           var tests = state.configuration.tests;
           tests.include = [];
           Object.keys(state.tests)
@@ -351,7 +359,7 @@
             .filter((test) => subset.tests.indexOf(test.path) !== -1)
             .filter((test) => !isTestDisabled(test))
             .forEach((test) => tests.include.push(test.path));
-          state.activeSubset = subset.title;
+          state.activeSubset = subset;
         }
 
         function hasTestType(value) {
@@ -468,7 +476,7 @@
             .filter((test) => !isTestDisabled(test))
             .map((test) => test.path)
             .filter((test) => tests.include.indexOf(test) !== -1);
-          state.activeSubset = "";
+          selectSubset(state.activeSubset);
           renderFiltersField();
           renderApisList(apis);
           renderApisField();
@@ -1078,12 +1086,16 @@
                             selectAllTests();
                             renderApisField();
                           },
-                          state.activeSubset === "All"
+                          state.activeSubset.title === "All"
                         ),
-                        createSelectButton("None", function () {
-                          deselectAllTests();
-                          renderApisField();
-                        }),
+                        createSelectButton(
+                          "None",
+                          function () {
+                            deselectAllTests();
+                            renderApisField();
+                          },
+                          state.activeSubset.title === "None"
+                        ),
                       ],
                     },
                     {
@@ -1096,7 +1108,7 @@
                               selectSubset(subset);
                               renderApisField();
                             },
-                            state.activeSubset === subset.title
+                            state.activeSubset.title === subset.title
                           );
                           button.style = "margin: 0.3em 0.3em 0 0";
                           return button;
