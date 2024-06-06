@@ -39,6 +39,7 @@
           { title: "Manual", value: "manual" },
         ];
         var state = {};
+        resetActiveSubset();
         loadServerStatus();
         loadSessionData(token, function () {
           loadPublicSessionData();
@@ -109,6 +110,7 @@
         function loadTestSubsets(callback) {
           state.testSubsets = [];
           state.activeFilters = [];
+          state.activeExcludeFilters = [];
           WaveService.readTestSubsets(function (subsets) {
             state.testSubsets = subsets;
             loadTests(() => {
@@ -127,7 +129,7 @@
                     if (subset.tests.indexOf(test) !== -1) continue;
                     subset.tests.push(test);
                   }
-                  subset.tests.slice(subset.tests.indexOf(test), 1);
+                  subset.tests.splice(subset.tests.indexOf(test), 1);
                 }
               }
               callback(subsets);
@@ -262,7 +264,7 @@
           } else {
             tests.include.push(path);
           }
-          state.activeSubset = "";
+          resetActiveSubset();
         }
 
         function handleRemoveIncludedTest(path) {
@@ -276,7 +278,7 @@
             var index = tests.include.findIndex((test) => test === path);
             tests.include.splice(index, 1);
           }
-          state.activeSubset = "";
+          resetActiveSubset();
         }
 
         function getIncludedRatio(path) {
@@ -306,12 +308,17 @@
           } else {
             tests.include = apis.map((api) => api.path);
           }
-          state.activeSubset = "All";
+          state.activeSubset = { title: "All" };
+        }
+
+        function resetActiveSubset() {
+          state.activeSubset = { title: "", tests: [] };
         }
 
         function deselectAllTests() {
           var configuration = state.configuration;
           configuration.tests.include = [];
+          state.activeSubset = { title: "None" };
         }
 
         function addTagsToTests(subsets) {
@@ -327,12 +334,16 @@
         }
 
         function applyDefaultFilters() {
-          state.activeSubset = "";
+          resetActiveSubset();
           const subsets = state.testSubsets;
           for (let subset of subsets) {
             if (!subset.tag) continue;
-            if (!subset.tag.default_filter) continue;
-            state.activeFilters.push(subset.tag.text);
+            if (subset.tag.default_filter) {
+              state.activeFilters.push(subset.tag.text);
+            }
+            if (subset.tag.default_exclude) {
+              state.activeExcludeFilters.push(subset.tag.text);
+            }
           }
           selectAllTests();
           for (let subset of subsets) {
@@ -343,6 +354,8 @@
         }
 
         function selectSubset(subset) {
+          if (subset.title === "All") return selectAllTests();
+          if (subset.title === "None") return deselectAllTests();
           var tests = state.configuration.tests;
           tests.include = [];
           Object.keys(state.tests)
@@ -351,7 +364,7 @@
             .filter((test) => subset.tests.indexOf(test.path) !== -1)
             .filter((test) => !isTestDisabled(test))
             .forEach((test) => tests.include.push(test.path));
-          state.activeSubset = subset.title;
+          state.activeSubset = subset;
         }
 
         function hasTestType(value) {
@@ -441,26 +454,60 @@
 
         function isTestDisabled(test) {
           const activeFilters = state.activeFilters;
-          if (activeFilters.length === 0) return false;
-          if (!test.tags) return true;
-          for (let tag of test.tags) {
-            if (activeFilters.indexOf(tag.text) === -1) continue;
+          const activeExcludeFilters = state.activeExcludeFilters;
+          if (activeFilters.length === 0 && activeExcludeFilters.length === 0)
             return false;
+          if (activeFilters.length > 0) {
+            if (!test.tags) return true;
+            let hasActiveFilter = false;
+            for (let tag of test.tags) {
+              if (activeFilters.indexOf(tag.text) === -1) continue;
+              hasActiveFilter = true
+              break;
+            }
+            if (!hasActiveFilter) return true;
           }
-          return true;
+          if (activeExcludeFilters.length > 0) {
+            if (!test.tags) return false;
+            for (let tag of test.tags) {
+              if (activeExcludeFilters.indexOf(tag.text) === -1) continue;
+              return true;
+            }
+          }
+          return false;
         }
 
         function isFilterActive(filter) {
           return state.activeFilters.indexOf(filter) !== -1;
         }
 
+        function isExcludeFilterActive(filter) {
+          return state.activeExcludeFilters.indexOf(filter) !== -1;
+        }
+
         function toggleFilter(filter) {
           const idx = state.activeFilters.indexOf(filter);
           if (idx === -1) {
             state.activeFilters.push(filter);
+            if (isExcludeFilterActive(filter)) toggleExcludeFilter(filter);
           } else {
             state.activeFilters.splice(idx, 1);
           }
+          updateIncludedTests();
+        }
+
+        function toggleExcludeFilter(filter) {
+          const idx = state.activeExcludeFilters.indexOf(filter);
+          if (idx === -1) {
+            state.activeExcludeFilters.push(filter);
+            if (isFilterActive(filter)) toggleFilter(filter);
+          } else {
+            state.activeExcludeFilters.splice(idx, 1);
+          }
+          updateIncludedTests();
+        }
+
+        function updateIncludedTests() {
           const tests = state.configuration.tests;
           tests.include = Object.keys(state.tests)
             .map((api) => state.tests[api])
@@ -468,8 +515,9 @@
             .filter((test) => !isTestDisabled(test))
             .map((test) => test.path)
             .filter((test) => tests.include.indexOf(test) !== -1);
-          state.activeSubset = "";
+          selectSubset(state.activeSubset);
           renderFiltersField();
+          renderExcludeFiltersField();
           renderApisList(apis);
           renderApisField();
           checkApiList();
@@ -859,6 +907,9 @@
                   id: "filters-field",
                 },
                 {
+                  id: "exclude-filters-field",
+                },
+                {
                   id: "apis-field",
                 },
                 {
@@ -882,6 +933,7 @@
           renderExpirationField();
           renderLabelsField();
           renderFiltersField();
+          renderExcludeFiltersField();
           renderApisField();
           renderExcludeField();
           renderTypesField();
@@ -1044,11 +1096,42 @@
                   children: {
                     className: "field is-grouped is-grouped-multiline",
                     children: getTags().map((tag) =>
-                      createSelectButton(
-                        tag.text,
-                        () => toggleFilter(tag.text),
-                        isFilterActive(tag.text)
-                      )
+                      createSelectButton(tag.text, {
+                        onSelect: () => toggleFilter(tag.text),
+                        isSelected: isFilterActive(tag.text),
+                      })
+                    ),
+                  },
+                },
+              ],
+            }),
+            filtersField
+          );
+        }
+
+        function renderExcludeFiltersField() {
+          var configuration = state.configuration;
+          var filtersField = UI.getElement("exclude-filters-field");
+
+          filtersField.parentNode.replaceChild(
+            UI.createElement({
+              id: "exclude-filters-field",
+              className: "field is-horizontal",
+              children: [
+                {
+                  className: "field-label",
+                  children: { className: "label", text: "Exclude Filters" },
+                },
+                {
+                  className: "field-body",
+                  children: {
+                    className: "field is-grouped is-grouped-multiline",
+                    children: getTags().map((tag) =>
+                      createSelectButton(tag.text, {
+                        onSelect: () => toggleExcludeFilter(tag.text),
+                        isSelected: isExcludeFilterActive(tag.text),
+                        selectColor: "danger",
+                      })
                     ),
                   },
                 },
@@ -1072,17 +1155,19 @@
                     {
                       style: "margin-top: 0.3em",
                       children: [
-                        createSelectButton(
-                          "All",
-                          function () {
+                        createSelectButton("All", {
+                          onSelect: function () {
                             selectAllTests();
                             renderApisField();
                           },
-                          state.activeSubset === "All"
-                        ),
-                        createSelectButton("None", function () {
-                          deselectAllTests();
-                          renderApisField();
+                          isSelected: state.activeSubset.title === "All",
+                        }),
+                        createSelectButton("None", {
+                          onSelect: function () {
+                            deselectAllTests();
+                            renderApisField();
+                          },
+                          isSelected: state.activeSubset.title === "None",
                         }),
                       ],
                     },
@@ -1090,14 +1175,14 @@
                       children: state.testSubsets
                         ?.filter((subset) => !!subset.title)
                         .map((subset) => {
-                          var button = createSelectButton(
-                            subset.title,
-                            function () {
+                          var button = createSelectButton(subset.title, {
+                            onSelect: function () {
                               selectSubset(subset);
                               renderApisField();
                             },
-                            state.activeSubset === subset.title
-                          );
+                            isSelected:
+                              state.activeSubset.title === subset.title,
+                          });
                           button.style = "margin: 0.3em 0.3em 0 0";
                           return button;
                         }),
@@ -1368,13 +1453,17 @@
                     {
                       style: "margin-top: 0.3em",
                       children: [
-                        createSelectButton("All", function () {
-                          selectAllRefSessions();
-                          renderReferencesField();
+                        createSelectButton("All", {
+                          onSelect: function () {
+                            selectAllRefSessions();
+                            renderReferencesField();
+                          },
                         }),
-                        createSelectButton("None", function () {
-                          deselectAllRefSessions;
-                          renderReferencesField();
+                        createSelectButton("None", {
+                          onSelect: function () {
+                            deselectAllRefSessions;
+                            renderReferencesField();
+                          },
                         }),
                       ],
                     },
@@ -1751,12 +1840,17 @@
           }));
         }
 
-        function createSelectButton(text, onSelect, isSelected) {
+        function createSelectButton(
+          text,
+          { onSelect, isSelected, selectColor }
+        ) {
+          selectColor = selectColor || "info";
           return {
             element: "button",
             style: "margin-right: 0.3em",
             className:
-              "button is-rounded is-small" + (isSelected ? " is-info" : ""),
+              "button is-rounded is-small" +
+              (isSelected ? " is-" + selectColor : ""),
             text: text,
             onClick: onSelect,
           };
