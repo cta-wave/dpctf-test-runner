@@ -354,6 +354,7 @@
         }
 
         function selectSubset(subset) {
+          if (subset.title === "") return;
           if (subset.title === "All") return selectAllTests();
           if (subset.title === "None") return deselectAllTests();
           var tests = state.configuration.tests;
@@ -462,7 +463,7 @@
             let hasActiveFilter = false;
             for (let tag of test.tags) {
               if (activeFilters.indexOf(tag.text) === -1) continue;
-              hasActiveFilter = true
+              hasActiveFilter = true;
               break;
             }
             if (!hasActiveFilter) return true;
