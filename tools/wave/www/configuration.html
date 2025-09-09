@@ -124,9 +124,11 @@
                   let regex = new RegExp(
                     test.replaceAll("*", ".*").replaceAll("/", "\/")
                   );
+                  //console.log(subset?.tag?.text, regex)
                   for (let test of tests) {
                     if (!regex.test(test)) continue;
                     if (subset.tests.indexOf(test) !== -1) continue;
+                    //console.log(test)
                     subset.tests.push(test);
                   }
                   subset.tests.splice(subset.tests.indexOf(test), 1);
@@ -327,6 +329,7 @@
               const api = subsetTest.match(/^\/([^\/]*)/)[1];
               const tests = state.tests[api];
               const test = tests.find((test) => test.path === subsetTest);
+              if (!test) continue;
               if (!test.tags) test.tags = [];
               test.tags.push(subset.tag);
             }
