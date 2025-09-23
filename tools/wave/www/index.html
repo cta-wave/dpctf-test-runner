@@ -34,6 +34,7 @@
         <h2 class="title is-5">
           New test session
         </h2>
+        <p id="mse-warning"></p>
         <div class="columns is-vcentered" style="margin-top: 20px;">
           <div class="column is-narrow">
             <div
@@ -235,6 +236,16 @@
             var expiaryDateElement = document.getElementById("expiary-date");
             expiaryDateElement.innerText = config.expirationDate.toLocaleString();
           });
+
+          var mseWarningElement = document.getElementById("mse-warning");
+          
+          if ('MediaSource' in window) {
+            console.log('MSE is supported');
+            mseWarningElement.innerText = 'MSE is supported';
+          } else {
+            console.log('MSE is not supported');
+            mseWarningElement.innerText = 'Warning: MSE API is not supported';
+          }
 
           var configurationUrl =
             location.origin +
