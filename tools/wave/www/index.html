@@ -10,6 +10,7 @@
     <script src="lib/wave-service.js"></script>
     <script src="lib/davidshimjs/qrcode.js"></script>
     <script src="lib/hbbtv.js"></script>
+    <script src="lib/ui.js"></script>
   </head>
 
   <body>
@@ -31,10 +32,10 @@
       </div>
 
       <div class="container" style="margin-top: 2em;">
+        <p id="mse-warning" style="max-width: 49em; margin-bottom: 1rem;"></p>
         <h2 class="title is-5">
           New test session
         </h2>
-        <p id="mse-warning">Checking MSE support</p>
         <div class="columns is-vcentered" style="margin-top: 20px;">
           <div class="column is-narrow">
             <div
@@ -158,6 +159,19 @@
         addClass(tabbables[selectedTabbable], "focused");
       }
 
+      function createErrorMessage() {
+        return {
+          element: "article",
+          className: "message is-warning",
+          children: [
+            {
+              className: "message-body",
+              text: 'Warning: MSE API is not supported',
+            },
+          ],
+        };
+      }
+
       function focusNext() {
         skipFocus(1);
       }
@@ -237,22 +251,13 @@
             expiaryDateElement.innerText = config.expirationDate.toLocaleString();
           });
 
-          var mseWarningElement = document.getElementById("mse-warning");
+          var mseWarningElement = UI.getElement("mse-warning");
+          if (!mseWarningElement) return;
+          mseWarningElement.innerHTML = "";
 
-          var mse = false;
-
-          if ('MediaSource' in window) {
-            mse = true;
-          } else {
-            mse = false;
-          }
-
-          if (mse == true) {
-            console.log('MSE is supported');
-            mseWarningElement.innerText = 'MSE is supported';
-          } else {
-            console.log('MSE is not supported');
-            mseWarningElement.innerText = 'Warning: MSE API is not supported';
+          if (!'MediaSource' in window) {
+            var error = createErrorMessage();
+            mseWarningElement.appendChild(UI.createElement(error));
           }
 
           var configurationUrl =
