@@ -239,7 +239,15 @@
 
           var mseWarningElement = document.getElementById("mse-warning");
           
+          var mse = false;
+
           if ('MediaSource' in window) {
+            mse = true;
+          } else {
+            mse = false;
+          }
+
+          if (mse == true) {
             console.log('MSE is supported');
             mseWarningElement.innerText = 'MSE is supported';
           } else {
