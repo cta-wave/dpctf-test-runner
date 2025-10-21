@@ -255,7 +255,7 @@
           if (!mseWarningElement) return;
           mseWarningElement.innerHTML = "";
 
-          if (!'MediaSource' in window) {
+          if (!('MediaSource' in window)) {
             var error = createErrorMessage();
             mseWarningElement.appendChild(UI.createElement(error));
           }
