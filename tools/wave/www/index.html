@@ -159,14 +159,14 @@
         addClass(tabbables[selectedTabbable], "focused");
       }
 
-      function createErrorMessage() {
+      function createErrorMessage(message) {
         return {
           element: "article",
           className: "message is-warning",
           children: [
             {
               className: "message-body",
-              text: 'Warning: MSE API is not supported',
+              text: message,
             },
           ],
         };
@@ -255,8 +255,14 @@
           if (!mseWarningElement) return;
           mseWarningElement.innerHTML = "";
 
-          if (!('MediaSource' in window)) {
-            var error = createErrorMessage();
+          if (!('MediaSource' in window) && !('MediaKeys' in window)) {
+            var error = createErrorMessage('Warning: MSE and EME APIs are not supported');
+            mseWarningElement.appendChild(UI.createElement(error));
+          } else if (!('MediaSource' in window)) {
+            var error = createErrorMessage('Warning: MSE API is not supported');
+            mseWarningElement.appendChild(UI.createElement(error));
+          } else if (!('MediaKeys' in window)) {
+            var error = createErrorMessage('Warning: EME API is not supported');
             mseWarningElement.appendChild(UI.createElement(error));
           }
 
