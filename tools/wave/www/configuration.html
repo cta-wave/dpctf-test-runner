@@ -327,6 +327,10 @@
               const api = subsetTest.match(/^\/([^\/]*)/)[1];
               const tests = state.tests[api];
               const test = tests.find((test) => test.path === subsetTest);
+              if (!test) {
+                console.log("could not find test:", subsetTest);
+                continue;
+              }
               if (!test.tags) test.tags = [];
               test.tags.push(subset.tag);
             }
