@@ -384,6 +384,10 @@ class ResultsManager(object):
         if api not in results:
             return
         results = results[api]
+        for result in results:
+            test = result["test"]
+            logs = self._tests_manager.get_logs(token, test)
+            result["logs"] = logs
         session = self._sessions_manager.read_session(token)
         self._ensure_results_directory_existence(api, token, session)
 
