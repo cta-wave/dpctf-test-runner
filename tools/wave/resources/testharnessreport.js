@@ -87,7 +87,7 @@ if (location.search && location.search.indexOf("token=") != -1) {
     for (var i = 0; i < arguments.length; i++) {
       text += arguments[i] + " ";
     }
-    logs.push(text);
+    //logs.push(text);
     if (console && console.log) {
       //console.log(text);
       consoleLog(text);
@@ -167,7 +167,7 @@ if (location.search && location.search.indexOf("token=") != -1) {
   function finishWptTest(data) {
     logToConsole("Creating result ...");
     data.test = __WAVE__TEST;
-    data.logs = logs;
+    //data.logs = logs;
     createResult(
       __WAVE__TOKEN,
       data,

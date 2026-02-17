@@ -280,9 +280,8 @@ class TestsManager(object):
 
     def _on_test_timeout(self, token, test):
         logs = []
-        if token in self._logs:
-            if test in self._logs[token]:
-                logs = self._logs[token][test]
+        if token in self._logs and test in self._logs[token]:
+            logs = self._logs[token][test]
         data = {
             "test": test,
             "status": "TIMEOUT",

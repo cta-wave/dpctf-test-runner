@@ -252,6 +252,30 @@ class TestsApiHandler(ApiHandler):
             self.handle_exception("Failed to add logs")
             response.status = 500
 
+    def get_logs(self, request, response):
+        try:
+            uri_parts = self.parse_uri(request)
+            token = uri_parts[2]
+            print("Getting logs for token:", token)
+
+            session = self._sessions_manager.read_session(token)
+            if session is None:
+                response.status = 404
+                return
+
+            logs = {}
+            print("Session running tests:", session.running_tests)
+            for api in session.running_tests:
+                for test in session.running_tests[api]:
+                    print("Getting logs for test:", test)
+                    test_logs = self._tests_manager.get_logs(token, test)
+                    logs[test] = test_logs
+
+            self.send_json(data=logs, response=response)
+        except Exception:
+            self.handle_exception("Failed to get logs")
+            response.status = 500
+
     def read_available_apis(self, request, response):
         try:
             apis = self._test_loader.get_apis()
@@ -291,6 +315,9 @@ class TestsApiHandler(ApiHandler):
                     return
                 if function == "malfunctioning":
                     self.read_malfunctioning(request, response)
+                    return
+                if function == "logs":
+                    self.get_logs(request, response)
                     return
             if method == "PUT":
                 if function == "malfunctioning":
