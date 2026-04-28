@@ -17,6 +17,7 @@ class SessionsApiHandler(ApiHandler):
     def __init__(
         self,
         sessions_manager,
+        tests_manager,
         results_manager,
         event_dispatcher,
         web_root,
@@ -24,6 +25,7 @@ class SessionsApiHandler(ApiHandler):
     ):
         super(SessionsApiHandler, self).__init__(web_root)
         self._sessions_manager = sessions_manager
+        self._tests_manager = tests_manager
         self._results_manager = results_manager
         self._event_dispatcher = event_dispatcher
         self._read_sessions_enabled = read_sessions_enabled
@@ -188,6 +190,33 @@ class SessionsApiHandler(ApiHandler):
             }
         except Exception:
             self.handle_exception("Failed to read session status")
+            return {"status": 500}
+
+    def read_session_logs(self, token):
+        try:
+            session = self._sessions_manager.read_session(token)
+            if session is None:
+                return {"status": 404}
+
+            running_tests = session.running_tests
+            if running_tests is None:
+                running_tests = {}
+
+            logs = self._tests_manager.read_running_test_logs(
+                token=token,
+                running_tests=running_tests
+            )
+
+            return {
+                "format": "application/json",
+                "data": {
+                    "token": token,
+                    "running_tests": running_tests,
+                    "logs": logs
+                }
+            }
+        except Exception:
+            self.handle_exception("Failed to read session logs")
             return {"status": 500}
 
     def read_public_sessions(self, request, response):
@@ -411,6 +440,8 @@ class SessionsApiHandler(ApiHandler):
             if method == "GET":
                 if function == "status":
                     result = self.read_session_status(token=uri_parts[2])
+                if function == "logs":
+                    result = self.read_session_logs(token=uri_parts[2])
                 if function == "events":
                     self.register_event_listener(request, response)
                     return

@@ -231,7 +231,7 @@ class TestsApiHandler(ApiHandler):
             uri_parts = self.parse_uri(request)
             token = uri_parts[2]
 
-            data = None
+            data = {}
             body = request.body.decode("utf-8")
             if body != "":
                 data = json.loads(body)
@@ -240,7 +240,11 @@ class TestsApiHandler(ApiHandler):
             if "logs" in data:
                 logs = data["logs"]
 
-            self._tests_manager.add_logs(token, logs)
+            test = None
+            if "test" in data:
+                test = data["test"]
+
+            self._tests_manager.add_logs(token, logs, test)
         except Exception:
             self.handle_exception("Failed to add logs")
             response.status = 500
