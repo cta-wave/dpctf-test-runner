@@ -1202,6 +1202,20 @@
                           title: `Download results of ${api} API as JSON file.`,
                         },
                       },
+                      {
+                        className: "control",
+                        children: {
+                          className: "button is-small",
+                          onclick: () => {
+                            window.open(
+                              "api/sessions/" + token + "/logs",
+                              "_blank"
+                            );
+                          },
+                          text: "logs",
+                          title: "Open live session logs endpoint.",
+                        },
+                      },
                       resultUi.state.reportsEnabled
                         ? {
                             className: "control",
