@@ -354,6 +354,32 @@
           const controlsView = UI.createElement({
             className: "field is-grouped is-grouped-multiline",
           });
+          if (status === "running") {
+            const liveLogsButton = UI.createElement({
+              id: "live-logs-button",
+              className: "control button",
+              onclick: () => {
+                window.open("api/sessions/" + token + "/logs", "_blank");
+              },
+              children: [
+                {
+                  element: "span",
+                  className: "icon",
+                  children: [
+                    {
+                      element: "i",
+                      className: "fa-solid fa-file-lines",
+                    },
+                  ],
+                },
+                {
+                  text: "live logs",
+                  element: "span",
+                },
+              ],
+            });
+            controlsView.appendChild(liveLogsButton);
+          }
           if (
             status &&
             status !== "aborted" &&
@@ -505,7 +531,7 @@
           });
 
           const heading = UI.createElement({
-            text: "Session details",
+            text: "Session detailsss",
             className: "title is-4",
           });
           sessionDetailsView.appendChild(heading);
@@ -896,40 +922,6 @@
             ],
           });
           sessionDetailsView.appendChild(labelsField);
-
-          const liveLogsField = UI.createElement({
-            className: "field is-horizontal",
-            children: [
-              {
-                className: "field-label",
-                children: {
-                  className: "label",
-                  text: "Live Logs of Running Test",
-                },
-              },
-              {
-                className: "field-body",
-                children: {
-                  className: "field",
-                  children: {
-                    className: "control",
-                    children: {
-                      className: "button is-small",
-                      onclick: () => {
-                        window.open(
-                          "api/sessions/" + token + "/logs",
-                          "_blank"
-                        );
-                      },
-                      text: "logs",
-                      title: "Open live session logs endpoint.",
-                    },
-                  },
-                },
-              },
-            ],
-          });
-          sessionDetailsView.appendChild(liveLogsField);
 
           const sessionDetails = UI.getElement("session-details");
           sessionDetails.innerHTML = "";
