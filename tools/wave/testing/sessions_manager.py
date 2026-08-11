@@ -246,6 +246,7 @@ class SessionsManager(object):
             return
         session.labels = labels
         self._push_to_cache(session)
+        self._results_manager.create_info_file(session)
 
     def delete_session(self, token):
         session = self.read_session(token)
