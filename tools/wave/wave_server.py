@@ -74,7 +74,8 @@ class WaveServer(object):
             test_loader,
             results_manager=results_manager,
             sessions_manager=sessions_manager,
-            event_dispatcher=event_dispatcher
+            event_dispatcher=event_dispatcher,
+            results_directory_path=configuration["results_directory_path"]
         )
 
         devices_manager.initialize(event_dispatcher)
@@ -98,6 +99,7 @@ class WaveServer(object):
         )
         sessions_api_handler = SessionsApiHandler(
             sessions_manager=sessions_manager,
+            tests_manager=tests_manager,
             results_manager=results_manager,
             event_dispatcher=event_dispatcher,
             web_root=configuration["web_root"],

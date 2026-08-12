@@ -42,6 +42,10 @@ if (location.search && location.search.indexOf("token=") != -1) {
   var resultSent = false;
   var screenConsole;
   var logs = [];
+  var uploadedLogsIndex = 0;
+  var logUploadInterval = null;
+  var logUploadInFlight = false;
+  var logUploadCallbacks = [];
 
   try {
     var documentRoot = document.body ? document.body : document.documentElement;
@@ -68,18 +72,88 @@ if (location.search && location.search.indexOf("token=") != -1) {
 
   var __wave_test_timeout;
   setTestTimeout(__WAVE__TIMEOUT);
+  startLogUploadInterval();
   function setTestTimeout(timeoutMillis) {
     if (__wave_test_timeout) {
       clearTimeout(__wave_test_timeout);
     }
     __wave_test_timeout = setTimeout(function () {
-      sendLogs(
-        __WAVE__TOKEN,
-        function () {},
-        function () {}
+      stopLogUploadInterval();
+      flushPendingLogs(
+        function () {
+          loadNext();
+        },
+        function () {
+          loadNext();
+        }
       );
-      loadNext();
     }, timeoutMillis);
+  }
+
+  function startLogUploadInterval() {
+    if (logUploadInterval) {
+      clearInterval(logUploadInterval);
+    }
+    logUploadInterval = setInterval(function () {
+      flushPendingLogs();
+    }, 1000);
+  }
+
+  function stopLogUploadInterval() {
+    if (!logUploadInterval) {
+      return;
+    }
+    clearInterval(logUploadInterval);
+    logUploadInterval = null;
+  }
+
+  function resolveLogUploadCallbacks(success) {
+    var callbacks = logUploadCallbacks;
+    logUploadCallbacks = [];
+
+    for (var i = 0; i < callbacks.length; i++) {
+      if (success) {
+        if (callbacks[i].onSuccess) {
+          callbacks[i].onSuccess();
+        }
+      } else if (callbacks[i].onError) {
+        callbacks[i].onError();
+      }
+    }
+  }
+
+  function flushPendingLogs(onSuccess, onError) {
+    if (onSuccess || onError) {
+      logUploadCallbacks.push({
+        onSuccess: onSuccess,
+        onError: onError,
+      });
+    }
+
+    if (logUploadInFlight) {
+      return;
+    }
+
+    var pendingLogs = logs.slice(uploadedLogsIndex);
+    if (pendingLogs.length === 0) {
+      resolveLogUploadCallbacks(true);
+      return;
+    }
+
+    logUploadInFlight = true;
+    sendLogs(
+      __WAVE__TOKEN,
+      pendingLogs,
+      function () {
+        uploadedLogsIndex += pendingLogs.length;
+        logUploadInFlight = false;
+        flushPendingLogs();
+      },
+      function () {
+        logUploadInFlight = false;
+        resolveLogUploadCallbacks(false);
+      }
+    );
   }
 
   function logToConsole() {
@@ -165,22 +239,27 @@ if (location.search && location.search.indexOf("token=") != -1) {
   }
 
   function finishWptTest(data) {
+    stopLogUploadInterval();
     logToConsole("Creating result ...");
     data.test = __WAVE__TEST;
     data.logs = logs;
-    createResult(
-      __WAVE__TOKEN,
-      data,
-      function () {
-        logToConsole("Result created.");
-        loadNext();
-      },
-      function () {
-        logToConsole("Failed to create result.");
-        logToConsole("Trying alternative method ...");
-        createResultAlt(__WAVE__TOKEN, data);
-      }
-    );
+    var submitResult = function () {
+      createResult(
+        __WAVE__TOKEN,
+        data,
+        function () {
+          logToConsole("Result created.");
+          loadNext();
+        },
+        function () {
+          logToConsole("Failed to create result.");
+          logToConsole("Trying alternative method ...");
+          createResultAlt(__WAVE__TOKEN, data);
+        }
+      );
+    };
+
+    flushPendingLogs(submitResult, submitResult);
   }
 
   function loadNext() {
@@ -189,14 +268,30 @@ if (location.search && location.search.indexOf("token=") != -1) {
       __WAVE__TOKEN,
       function (url) {
         logToConsole("Redirecting to " + url);
-        setTimeout(function () {
-          location.href = url;
-        }, __WAVE__REDIRECT_TIME * 1000);
+        flushPendingLogs(
+          function () {
+            setTimeout(function () {
+              location.href = url;
+            }, __WAVE__REDIRECT_TIME * 1000);
+          },
+          function () {
+            setTimeout(function () {
+              location.href = url;
+            }, __WAVE__REDIRECT_TIME * 1000);
+          }
+        );
       },
       function () {
         logToConsole("Could not load next test.");
         logToConsole("Trying alternative method ...");
-        readNextAlt(__WAVE__TOKEN);
+        flushPendingLogs(
+          function () {
+            readNextAlt(__WAVE__TOKEN);
+          },
+          function () {
+            readNextAlt(__WAVE__TOKEN);
+          }
+        );
       }
     );
   }
@@ -234,8 +329,8 @@ if (location.search && location.search.indexOf("token=") != -1) {
     );
   }
 
-  function sendLogs(token, onSuccess, onError) {
-    let data = { logs: logs };
+  function sendLogs(token, logsToSend, onSuccess, onError) {
+    var data = { test: __WAVE__TEST, logs: logsToSend };
     sendRequest(
       "POST",
       "api/tests/" + token + "/logs",
@@ -246,7 +341,8 @@ if (location.search && location.search.indexOf("token=") != -1) {
       function () {
         onSuccess();
       },
-      onError
+      onError,
+      false
     );
   }
 
@@ -260,7 +356,15 @@ if (location.search && location.search.indexOf("token=") != -1) {
       encodeURIComponent(JSON.stringify(result));
   }
 
-  function sendRequest(method, uri, headers, data, onSuccess, onError) {
+  function sendRequest(
+    method,
+    uri,
+    headers,
+    data,
+    onSuccess,
+    onError,
+    shouldLogRequest
+  ) {
     var url = getWaveUrl(uri);
     var xhr = new XMLHttpRequest();
     xhr.addEventListener("load", function () {
@@ -269,7 +373,9 @@ if (location.search && location.search.indexOf("token=") != -1) {
     xhr.addEventListener("error", function () {
       if (onError) onError();
     });
-    logToConsole("Sending", method, 'request to "' + url + '"');
+    if (shouldLogRequest !== false) {
+      logToConsole("Sending", method, 'request to "' + url + '"');
+    }
     xhr.open(method, url, true);
     if (headers) {
       for (var header in headers) {

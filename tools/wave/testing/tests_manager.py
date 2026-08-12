@@ -1,6 +1,8 @@
 from __future__ import division
 from __future__ import absolute_import
 from __future__ import unicode_literals
+import io
+import os
 import re
 from threading import Timer
 import functools
@@ -17,12 +19,14 @@ class TestsManager(object):
         test_loader,
         sessions_manager,
         results_manager,
-        event_dispatcher
+        event_dispatcher,
+        results_directory_path=None
     ):
         self._test_loader = test_loader
         self._sessions_manager = sessions_manager
         self._results_manager = results_manager
         self._event_dispatcher = event_dispatcher
+        self._results_directory_path = results_directory_path
 
         self._timeouts = []
         self._logs = {}
@@ -46,6 +50,8 @@ class TestsManager(object):
         test = self._get_next_test_from_list(pending_tests)
         if test is None:
             return None
+
+        self._logs[token] = []
 
         pending_tests = self.remove_test_from_list(pending_tests, test)
         running_tests = self.add_test_to_list(running_tests, test)
@@ -373,10 +379,108 @@ class TestsManager(object):
 
         return pending_tests
 
-    def add_logs(self, token, logs):
+    def add_logs(self, token, logs, test=None):
+        if logs is None:
+            return
+        if not isinstance(logs, list):
+            logs = [logs]
+
         if token not in self._logs:
             self._logs[token] = []
         self._logs[token] = self._logs[token] + logs
+
+        self._append_logs_to_file(token, logs, test=test)
+
+    def _append_logs_to_file(self, token, logs, test=None):
+        if not self._results_directory_path or not token or not logs:
+            return
+
+        if test is None:
+            session = self._sessions_manager.read_session(token)
+            test = self._get_current_running_test(session)
+
+        folder_name, test_name = self._resolve_log_target(test)
+        if folder_name is None or test_name is None:
+            return
+
+        directory_path = os.path.join(
+            self._results_directory_path,
+            token,
+            folder_name
+        )
+        try:
+            if not os.path.isdir(directory_path):
+                os.makedirs(directory_path)
+        except OSError:
+            if not os.path.isdir(directory_path):
+                return
+
+        file_path = os.path.join(directory_path, test_name + ".log")
+        with io.open(file_path, "a", encoding="utf-8") as log_file:
+            for entry in logs:
+                log_file.write("{}\n".format(entry))
+
+    def _resolve_log_target(self, test):
+        if not test:
+            return None, None
+
+        normalized_test = "{}".format(test).split("?", 1)[0].replace("\\", "/")
+        path_parts = [part for part in normalized_test.split("/") if part]
+        if not path_parts:
+            return None, None
+
+        folder_name = path_parts[0]
+        file_name = path_parts[-1]
+        test_name = os.path.splitext(file_name)[0]
+
+        if not folder_name or not test_name:
+            return None, None
+
+        return folder_name, test_name
+
+    def _get_current_running_test(self, session):
+        if session is None or session.running_tests is None:
+            return None
+        return self._get_next_test_from_list(session.running_tests)
+
+    def read_running_test_logs(self, token, running_tests=None):
+        if running_tests is None:
+            session = self._sessions_manager.read_session(token)
+            if session is None:
+                raise NotFoundException("Could not find session using token: " + token)
+            running_tests = session.running_tests
+
+        if running_tests is None:
+            running_tests = {}
+
+        logs = {}
+        for api in list(running_tests.keys()):
+            logs[api] = {}
+            for test in running_tests[api]:
+                logs[api][test] = self._read_logs_from_file(token, test)
+
+        return logs
+
+    def _read_logs_from_file(self, token, test):
+        if not self._results_directory_path or not token or not test:
+            return []
+
+        folder_name, test_name = self._resolve_log_target(test)
+        if folder_name is None or test_name is None:
+            return []
+
+        file_path = os.path.join(
+            self._results_directory_path,
+            token,
+            folder_name,
+            test_name + ".log"
+        )
+
+        if not os.path.isfile(file_path):
+            return []
+
+        with io.open(file_path, "r", encoding="utf-8") as log_file:
+            return [line.rstrip("\n") for line in log_file]
 
     def get_logs(self, token):
         if token not in self._logs:

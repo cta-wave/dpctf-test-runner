@@ -354,6 +354,32 @@
           const controlsView = UI.createElement({
             className: "field is-grouped is-grouped-multiline",
           });
+          if (status === "running") {
+            const liveLogsButton = UI.createElement({
+              id: "live-logs-button",
+              className: "control button",
+              onclick: () => {
+                window.open("api/sessions/" + token + "/logs", "_blank");
+              },
+              children: [
+                {
+                  element: "span",
+                  className: "icon",
+                  children: [
+                    {
+                      element: "i",
+                      className: "fa-solid fa-file-lines",
+                    },
+                  ],
+                },
+                {
+                  text: "live logs",
+                  element: "span",
+                },
+              ],
+            });
+            controlsView.appendChild(liveLogsButton);
+          }
           if (
             status &&
             status !== "aborted" &&
