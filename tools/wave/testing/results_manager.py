@@ -489,9 +489,14 @@ class ResultsManager(object):
 
     def create_info_file(self, session):
         token = session.token
-        info_file_path = os.path.join(
+        session_directory_path = os.path.join(
             self._results_directory_path,
-            token,
+            token
+        )
+        if not os.path.isdir(session_directory_path):
+            os.makedirs(session_directory_path)
+        info_file_path = os.path.join(
+            session_directory_path,
             "info.json"
         )
         info = serialize_session(session)
@@ -555,6 +560,8 @@ class ResultsManager(object):
         session = self._sessions_manager.read_session(token)
         if session.status != COMPLETED:
             return None
+
+        self.create_info_file(session)
 
         session_results_directory = os.path.join(self._results_directory_path,
                                                  token)
