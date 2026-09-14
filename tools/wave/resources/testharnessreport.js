@@ -41,7 +41,6 @@ if (location.search && location.search.indexOf("token=") != -1) {
   var nextUrl = null;
   var resultSent = false;
   var screenConsole;
-  var logs = [];
 
   try {
     var documentRoot = document.body ? document.body : document.documentElement;
@@ -73,11 +72,6 @@ if (location.search && location.search.indexOf("token=") != -1) {
       clearTimeout(__wave_test_timeout);
     }
     __wave_test_timeout = setTimeout(function () {
-      sendLogs(
-        __WAVE__TOKEN,
-        function () {},
-        function () {}
-      );
       loadNext();
     }, timeoutMillis);
   }
@@ -87,7 +81,6 @@ if (location.search && location.search.indexOf("token=") != -1) {
     for (var i = 0; i < arguments.length; i++) {
       text += arguments[i] + " ";
     }
-    logs.push(text);
     if (console && console.log) {
       //console.log(text);
       consoleLog(text);
@@ -167,7 +160,6 @@ if (location.search && location.search.indexOf("token=") != -1) {
   function finishWptTest(data) {
     logToConsole("Creating result ...");
     data.test = __WAVE__TEST;
-    data.logs = logs;
     createResult(
       __WAVE__TOKEN,
       data,
@@ -227,22 +219,6 @@ if (location.search && location.search.indexOf("token=") != -1) {
         "Content-Type": "application/json",
       },
       JSON.stringify(result),
-      function () {
-        onSuccess();
-      },
-      onError
-    );
-  }
-
-  function sendLogs(token, onSuccess, onError) {
-    let data = { logs: logs };
-    sendRequest(
-      "POST",
-      "api/tests/" + token + "/logs",
-      {
-        "Content-Type": "application/json",
-      },
-      JSON.stringify(data),
       function () {
         onSuccess();
       },
