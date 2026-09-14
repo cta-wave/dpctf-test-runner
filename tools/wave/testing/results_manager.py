@@ -47,6 +47,11 @@ class ResultsManager(object):
         result = self.prepare_result(data)
         test = result["test"]
 
+        logs = self._tests_manager.get_logs(token, test)
+        if "logs" not in result:
+            result["logs"] = []
+        result["logs"] = result["logs"] + logs
+
         session = self._sessions_manager.read_session(token)
 
         if session is None:

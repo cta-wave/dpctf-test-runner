@@ -236,11 +236,17 @@ class TestsApiHandler(ApiHandler):
             if body != "":
                 data = json.loads(body)
 
+            test = None
+            if data is not None and "test" in data:
+                test = data["test"]
+            if not isinstance(test, str) or not test:
+                return
+
             logs = []
-            if "logs" in data:
+            if data is not None and "logs" in data:
                 logs = data["logs"]
 
-            self._tests_manager.add_logs(token, logs)
+            self._tests_manager.add_logs(token, test, logs)
         except Exception:
             self.handle_exception("Failed to add logs")
             response.status = 500
