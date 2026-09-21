@@ -73,6 +73,83 @@ def test_last_completed_tests():
     # CleanUp
     delete_session(token)
     
+def test_normal_result_contains_tests_logs():
+    # Arrange
+    token = create_session()
+    tests = read_available_tests()
+    apis = list(tests.keys())
+    api = apis[0]
+    test = tests[api][0]
+    set_session_tests(token, [test])
+    start_session(token)
+    next_test = read_next_test(token)
+    create_logs(token, test, ["log line 1", "log line 2"])
+    
+    # Act
+    create_positive_result(token, test)
+    
+    # Assert
+    updated_results = read_results(token, api)
+    result = next(r for r in updated_results["results"] if r["test"] == test)
+    assert result["logs"] == ["log line 1", "log line 2"]
+    
+    # CleanUp
+    delete_session(token)
+    
+def test_logs_are_isolated_between_tests():
+    # Arrange
+    token = create_session()
+    tests = read_available_tests()
+    apis = list(tests.keys())
+    api = apis[0]
+    tests_in_api = tests[api]
+    test1 = tests_in_api[0]
+    test2 = tests_in_api[1]
+    set_session_tests(token, [test1, test2])
+    start_session(token)
+    
+    # Act
+    next_test = read_next_test(token)
+    create_logs(token, test1, ["test1 log"])
+    create_positive_result(token, test1)
+    
+    next_test = read_next_test(token)
+    create_logs(token, test2, ["test2 log"])
+    create_positive_result(token, test2)
+    
+    # Assert
+    updated_results = read_results(token, api)
+    result1 = next(r for r in updated_results["results"] if r["test"] == test1)
+    result2 = next(r for r in updated_results["results"] if r["test"] == test2)
+    assert result1["logs"] == ["test1 log"]
+    assert result2["logs"] == ["test2 log"]
+    
+    # CleanUp
+    delete_session(token)
+    
+def test_timeout_result_contains_tests_logs():
+    # Arrange
+    token = create_session()
+    tests = read_available_tests()
+    apis = list(tests.keys())
+    api = apis[0]
+    test = tests[api][0]
+    set_session_tests(token, [test])
+    start_session(token)
+    next_test = read_next_test(token)
+    create_logs(token, test, ["timeout log line"])
+    
+    # Act
+    create_timed_out_result(token, test)
+    
+    # Assert
+    updated_results = read_results(token, api)
+    result = next(r for r in updated_results["results"] if r["test"] == test)
+    assert result["logs"] == ["timeout log line"]
+    
+    # CleanUp
+    delete_session(token)
+    
 def create_session():
     url = "/".join([get_url(), "api/sessions"])
     r = requests.post(url)
@@ -147,6 +224,19 @@ def create_timed_out_result(token, test):
     
     create_result(token, test, result)
     
+def create_logs(token, test, logs):
+    url = "/".join([get_url(), "api/tests", token, "logs"])
+    data = {
+        "test": test,
+        "logs": logs
+    }
+    r = requests.post(url, data=json.dumps(data))
+    print(r.status_code)
+    
+def read_results(token, api):
+    url = "/".join([get_url(), "api/results", token, api, "json"])
+    r = requests.get(url)
+    return r.json()
 def read_session_tests(token):
     url = "/".join([get_url(), "api/tests", token])
     r = requests.get(url)

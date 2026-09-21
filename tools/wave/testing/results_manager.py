@@ -47,6 +47,11 @@ class ResultsManager(object):
         result = self.prepare_result(data)
         test = result["test"]
 
+        logs = self._tests_manager.get_logs(token, test)
+        if "logs" not in result:
+            result["logs"] = []
+        result["logs"] = result["logs"] + logs
+
         session = self._sessions_manager.read_session(token)
 
         if session is None:
@@ -254,6 +259,7 @@ class ResultsManager(object):
             self.save_api_results(token, api)
             self.create_info_file(session)
             self._clear_cache_api(token, api)
+        self._tests_manager.clear_logs(token)
         session.recent_completed_count = 0
         self._sessions_manager.update_session(session)
 
