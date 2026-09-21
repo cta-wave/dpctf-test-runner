@@ -156,3 +156,17 @@ def test_on_test_timeout_does_not_leak_sibling_logs():
     result = cached["group"][0]
     assert result["test"] == "group/test1.html"
     assert result["logs"] == []
+
+
+def test_clear_logs_discards_buffered_logs_at_persist():
+    tests_manager = make_tests_manager()
+
+    tests_manager.add_logs("token", "group/test1.html", ["a"])
+    tests_manager.add_logs("token", "group/test2.html", ["b"])
+    tests_manager.add_logs("other", "group/test1.html", ["c"])
+
+    tests_manager.clear_logs("token")
+
+    assert tests_manager.get_logs("token", "group/test1.html") == []
+    assert tests_manager.get_logs("token", "group/test2.html") == []
+    assert tests_manager.get_logs("other", "group/test1.html") == ["c"]

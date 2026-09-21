@@ -382,3 +382,6 @@ class TestsManager(object):
         if test not in self._logs[token]:
             return []
         return self._logs[token][test]
+
+    def clear_logs(self, token):
+        self._logs.pop(token, None)

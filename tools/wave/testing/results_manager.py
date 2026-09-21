@@ -259,6 +259,7 @@ class ResultsManager(object):
             self.save_api_results(token, api)
             self.create_info_file(session)
             self._clear_cache_api(token, api)
+        self._tests_manager.clear_logs(token)
         session.recent_completed_count = 0
         self._sessions_manager.update_session(session)
 
