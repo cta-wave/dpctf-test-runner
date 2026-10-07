@@ -1,4 +1,5 @@
 import pytest
+import time
 from unittest.mock import Mock
 
 from tools.wave.testing.tests_manager import TestsManager
@@ -127,10 +128,6 @@ def test_on_test_timeout_result_contains_tests_logs():
     tests_manager, results_manager = make_tests_and_results_manager()
 
     tests_manager.add_logs("token", "group/test1.html", ["timeout log line"])
-    tests_manager._timeouts.append({
-        "test": "group/test1.html",
-        "timeout": Mock(),
-    })
 
     tests_manager._on_test_timeout("token", "group/test1.html")
 
@@ -145,10 +142,6 @@ def test_on_test_timeout_does_not_leak_sibling_logs():
     tests_manager, results_manager = make_tests_and_results_manager()
 
     tests_manager.add_logs("token", "group/test2.html", ["sibling log"])
-    tests_manager._timeouts.append({
-        "test": "group/test1.html",
-        "timeout": Mock(),
-    })
 
     tests_manager._on_test_timeout("token", "group/test1.html")
 
@@ -170,3 +163,106 @@ def test_clear_logs_discards_buffered_logs_at_persist():
     assert tests_manager.get_logs("token", "group/test1.html") == []
     assert tests_manager.get_logs("token", "group/test2.html") == []
     assert tests_manager.get_logs("other", "group/test1.html") == ["c"]
+
+
+def make_deadline_sessions_manager():
+    sessions_manager = Mock()
+    session = make_session()
+    sessions_manager.read_session.return_value = session
+    sessions_manager.is_test_running.return_value = True
+    return sessions_manager
+
+
+def test_next_test_sets_deadline_in_millis(monkeypatch):
+    tests_manager = TestsManager()
+    sessions_manager = make_deadline_sessions_manager()
+    tests_manager.initialize(
+        test_loader=None,
+        sessions_manager=sessions_manager,
+        results_manager=Mock(),
+        event_dispatcher=Mock(),
+        timeout_check_interval=1000,
+    )
+
+    session = make_session()
+    session.timeouts = {"automatic": 1000, "manual": 1000}
+    session.pending_tests = {"group": ["group/test1.html"]}
+
+    import tools.wave.testing.tests_manager as tm
+    # freeze time so we can assert the exact deadline value
+    monkeypatch.setattr(tm.time, "time", lambda: 0)
+
+    tests_manager.next_test(session)
+
+    assert "group/test1.html" in tests_manager._deadlines["token"]
+    assert tests_manager._deadlines["token"]["group/test1.html"] == 1000
+    # the test moved out of pending into running
+    assert session.pending_tests == {}
+    assert session.running_tests == {"group": ["group/test1.html"]}
+
+
+def test_check_timeouts_resolves_expired_deadline_to_timeout():
+    tests_manager, results_manager = make_tests_and_results_manager()
+
+    tests_manager._deadlines["token"] = {
+        "group/test1.html": 1,  # already past
+    }
+    sessions_manager = tests_manager._sessions_manager
+    sessions_manager.is_test_running.return_value = True
+
+    tests_manager.check_timeouts()
+
+    cached = results_manager._read_from_cache("token")
+    result = cached["group"][0]
+    assert result["status"] == "TIMEOUT"
+    # deadline removed after resolution
+    assert tests_manager._deadlines == {}
+
+
+def test_check_timeouts_leaves_future_deadline_alone():
+    tests_manager, results_manager = make_tests_and_results_manager()
+
+    # deadline far in the future
+    tests_manager._deadlines["token"] = {
+        "group/test1.html": int(time.time() * 1000) + 100000,
+    }
+    sessions_manager = tests_manager._sessions_manager
+    sessions_manager.is_test_running.return_value = True
+
+    tests_manager.check_timeouts()
+
+    assert results_manager._read_from_cache("token") == []
+    assert "group/test1.html" in tests_manager._deadlines["token"]
+
+
+def test_check_timeouts_drops_deadline_for_no_longer_running_test():
+    tests_manager, results_manager = make_tests_and_results_manager()
+
+    tests_manager._deadlines["token"] = {
+        "group/test1.html": 1,
+    }
+    sessions_manager = tests_manager._sessions_manager
+    # test already resolved elsewhere -> not running any more
+    sessions_manager.is_test_running.return_value = False
+
+    tests_manager.check_timeouts()
+
+    assert results_manager._read_from_cache("token") == []
+    assert tests_manager._deadlines == {}
+
+
+def test_complete_result_removes_deadline():
+    tests_manager, results_manager = make_tests_and_results_manager()
+
+    tests_manager._deadlines["token"] = {
+        "group/test1.html": 9999999999999,
+    }
+
+    results_manager.create_result("token", {
+        "test": "group/test1.html",
+        "status": "OK",
+        "message": None,
+        "subtests": [{"name": "s", "status": "PASS", "message": None}],
+    })
+
+    assert tests_manager._deadlines == {}
