@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import absolute_import
 from __future__ import unicode_literals
 import re
+import time
 from threading import Timer
 import functools
 
@@ -10,6 +11,8 @@ from .event_dispatcher import TEST_COMPLETED_EVENT
 from ..data.exceptions.not_found_exception import NotFoundException
 from ..data.session import COMPLETED, ABORTED
 
+DEFAULT_TIMEOUT_CHECK_INTERVAL = 1000
+
 
 class TestsManager(object):
     def initialize(
@@ -17,14 +20,17 @@ class TestsManager(object):
         test_loader,
         sessions_manager,
         results_manager,
-        event_dispatcher
+        event_dispatcher,
+        timeout_check_interval=DEFAULT_TIMEOUT_CHECK_INTERVAL
     ):
         self._test_loader = test_loader
         self._sessions_manager = sessions_manager
         self._results_manager = results_manager
         self._event_dispatcher = event_dispatcher
 
-        self._timeouts = []
+        self._deadlines = {}
+        self._timeout_check_interval = timeout_check_interval
+        self._timeout_check_timer = None
         self._logs = {}
 
     def next_test(self, session):
@@ -50,22 +56,13 @@ class TestsManager(object):
         pending_tests = self.remove_test_from_list(pending_tests, test)
         running_tests = self.add_test_to_list(running_tests, test)
 
-        test_timeout = self.get_test_timeout(test, session) / 1000.0
-
-        def handler(self, token, test):
-            self._on_test_timeout(token, test)
-
-        timer = Timer(test_timeout, handler, [self, token, test])
-        self._timeouts.append({
-            "test": test,
-            "timeout": timer
-        })
+        test_timeout = self.get_test_timeout(test, session)
+        self._set_deadline(token, test, test_timeout)
 
         session.pending_tests = pending_tests
         session.running_tests = running_tests
         self._sessions_manager.update_session(session)
 
-        timer.start()
         return test
 
     def read_last_completed_tests(self, token, count):
@@ -293,6 +290,63 @@ class TestsManager(object):
 
         self._results_manager.create_result(token, data)
 
+    def _set_deadline(self, token, test, timeout_millis):
+        if token not in self._deadlines:
+            self._deadlines[token] = {}
+        deadline = int(time.time() * 1000) + timeout_millis
+        self._deadlines[token][test] = deadline
+        self.start_timeout_checking()
+
+    def _remove_deadline(self, token, test):
+        if token not in self._deadlines:
+            return
+        self._deadlines[token].pop(test, None)
+        if len(self._deadlines[token]) == 0:
+            del self._deadlines[token]
+
+    def start_timeout_checking(self):
+        if self._timeout_check_timer is not None:
+            return
+        self._timeout_check_timer = Timer(
+            self._timeout_check_interval / 1000.0,
+            self._timeout_check
+        )
+        self._timeout_check_timer.daemon = True
+        self._timeout_check_timer.start()
+
+    def _timeout_check(self):
+        try:
+            self.check_timeouts()
+        except Exception:
+            pass
+        self._timeout_check_timer = None
+        self.start_timeout_checking()
+
+    def check_timeouts(self):
+        now = int(time.time() * 1000)
+
+        for token in list(self._deadlines.keys()):
+            deadlines = self._deadlines.get(token)
+            if not deadlines:
+                continue
+
+            session = self._sessions_manager.read_session(token)
+            if session is None:
+                continue
+            if session.status == COMPLETED or session.status == ABORTED:
+                self._deadlines.pop(token, None)
+                continue
+
+            for test in list(deadlines.keys()):
+                if test not in deadlines:
+                    continue
+                deadline = deadlines[test]
+                if not self._sessions_manager.is_test_running(test, session):
+                    self._remove_deadline(token, test)
+                    continue
+                if now >= deadline:
+                    self._on_test_timeout(token, test)
+
     def read_tests(self):
         return self._test_loader.get_tests()
 
@@ -302,9 +356,7 @@ class TestsManager(object):
         running_tests = self.remove_test_from_list(running_tests, test)
         session.running_tests = running_tests
 
-        timeout = next((t for t in self._timeouts if t["test"] == test), None)
-        timeout["timeout"].cancel()
-        self._timeouts.remove(timeout)
+        self._remove_deadline(session.token, test)
 
         self.update_tests(
             running_tests=running_tests,
