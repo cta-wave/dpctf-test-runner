@@ -130,7 +130,7 @@ class ResultsManager(object):
                 session.test_state[api]["fail"] += 1
             elif result["status"] == "TIMEOUT":
                 session.test_state[api]["timeout"] += 1
-            elif result["status"] == "NOTRUN":
+            elif result["status"] in ("NOTRUN", "NOT_RUN"):
                 session.test_state[api]["not_run"] += 1
         else:
             for test in result["subtests"]:
@@ -140,7 +140,7 @@ class ResultsManager(object):
                     session.test_state[api]["fail"] += 1
                 elif test["status"] == "TIMEOUT":
                     session.test_state[api]["timeout"] += 1
-                elif test["status"] == "NOTRUN":
+                elif test["status"] in ("NOTRUN", "NOT_RUN"):
                     session.test_state[api]["not_run"] += 1
 
         session.test_state[api]["complete"] += 1
@@ -165,7 +165,7 @@ class ResultsManager(object):
                         test_state[api]["fail"] += 1
                     elif result["status"] == "TIMEOUT":
                         test_state[api]["timeout"] += 1
-                    elif result["status"] == "NOTRUN":
+                    elif result["status"] in ("NOTRUN", "NOT_RUN"):
                         test_state[api]["not_run"] += 1
                 else:
                     for test in result["subtests"]:
@@ -175,7 +175,7 @@ class ResultsManager(object):
                             test_state[api]["fail"] += 1
                         elif test["status"] == "TIMEOUT":
                             test_state[api]["timeout"] += 1
-                        elif test["status"] == "NOTRUN":
+                        elif test["status"] in ("NOTRUN", "NOT_RUN"):
                             test_state[api]["not_run"] += 1
                 test_state[api]["complete"] += 1
         return test_state
@@ -641,7 +641,7 @@ class ResultsManager(object):
             return deserialize_session(info)
 
     def import_results(self, blob):
-        if not self.is_import_results_enabled:
+        if not self.is_import_results_enabled():
             raise PermissionDeniedException()
         tmp_file_name = "{}.zip".format(str(time.time()))
 
@@ -663,11 +663,11 @@ class ResultsManager(object):
         os.makedirs(destination_path)
         zip.extractall(destination_path)
         self.remove_tmp_files()
-        self.load_results()
+        self.load_results(token)
         return token
 
     def import_results_api_json(self, token, api, blob):
-        if not self.is_import_results_enabled:
+        if not self.is_import_results_enabled():
             raise PermissionDeniedException()
         destination_path = os.path.join(self._results_directory_path, token, api)
         files = os.listdir(destination_path)
@@ -691,6 +691,9 @@ class ResultsManager(object):
         session.test_state = test_state
 
         self._sessions_manager.update_session(session)
+        # Persist the enriched counters so a restart reloads them from
+        # info.json and the overview stays in sync with the full results.
+        self.create_info_file(session)
 
     def remove_tmp_files(self):
         files = os.listdir(".")
