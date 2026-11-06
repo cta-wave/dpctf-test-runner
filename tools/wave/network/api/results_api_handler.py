@@ -5,6 +5,8 @@ import json
 from .api_handler import ApiHandler
 from ...data.exceptions.duplicate_exception import DuplicateException
 from ...data.exceptions.invalid_data_exception import InvalidDataException
+from ...data.exceptions.not_found_exception import NotFoundException
+from ...data.exceptions.permission_denied_exception import PermissionDeniedException
 
 
 class ResultsApiHandler(ApiHandler):
@@ -117,6 +119,12 @@ class ResultsApiHandler(ApiHandler):
             self._results_manager.import_results_api_json(token, api, blob)
 
             response.status = 200
+        except NotFoundException:
+            self.handle_exception("Failed to upload api json")
+            self.send_json({"error": "Could not find session!"}, response, 404)
+        except InvalidDataException:
+            self.handle_exception("Failed to upload api json")
+            self.send_json({"error": "Invalid input data!"}, response, 400)
         except Exception:
             self.handle_exception("Failed to upload api json")
             response.status = 500
@@ -172,6 +180,10 @@ class ResultsApiHandler(ApiHandler):
         except InvalidDataException:
             self.handle_exception("Failed to import results")
             self.send_json({"error": "Invalid input data!"}, response, 400)
+            return
+        except PermissionDeniedException:
+            self.handle_exception("Failed to import results")
+            self.send_json({"error": "Results import is not enabled!"}, response, 403)
             return
         except Exception:
             self.handle_exception("Failed to import results")

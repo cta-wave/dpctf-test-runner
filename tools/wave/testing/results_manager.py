@@ -667,24 +667,41 @@ class ResultsManager(object):
         return token
 
     def import_results_api_json(self, token, api, blob):
-        if not self.is_import_results_enabled():
-            raise PermissionDeniedException()
-        destination_path = os.path.join(self._results_directory_path, token, api)
-        files = os.listdir(destination_path)
-        file_name = ""
-        for file in files:
-            if RESULTS_FILE_PATTERN.match(file):
-                file_name = file
-                break
-        destination_file_path = os.path.join(destination_path, file_name)
-        with open(destination_file_path, "wb") as file:
-            file.write(blob)
-
-        self.generate_report(token, api)
-
+        if token in ("..", ".") or api in ("..", "."):
+            raise InvalidDataException("Invalid token or api path segment!")
         session = self._sessions_manager.read_session(token)
         if session is None:
-            raise NotFoundException()
+            raise NotFoundException(
+                "Could not find session {}".format(token))
+
+        destination_path = os.path.join(self._results_directory_path, token, api)
+        file_name = ""
+        if os.path.isdir(destination_path):
+            for file in os.listdir(destination_path):
+                if RESULTS_FILE_PATTERN.match(file):
+                    file_name = file
+                    break
+        if file_name == "":
+            raise InvalidDataException(
+                "No result file to patch for {} in session {}".format(api, token))
+
+        destination_file_path = os.path.join(destination_path, file_name)
+        try:
+            with open(destination_file_path, "wb") as file:
+                file.write(blob)
+        except PermissionError:
+            try:
+                owner = os.stat(destination_file_path).st_uid
+                owner_note = "the file is owned by uid {}".format(owner)
+            except OSError:
+                owner_note = "the file owner could not be determined"
+            raise PermissionError(
+                "Cannot write {} as uid {}: {}. "
+                "The results volume must be owned by the container user "
+                "(see check-permissions.sh)".format(
+                    destination_file_path, os.getuid(), owner_note))
+
+        self.generate_report(token, api)
 
         results = self.load_results(token)
         test_state = self.parse_test_state(results)
