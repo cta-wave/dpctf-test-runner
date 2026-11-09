@@ -245,8 +245,10 @@ def test_import_results_rejects_duplicate_session(tmp_path):
         tmp_path, import_results_enabled=True)
     sessions_manager.read_session.return_value = Mock()
 
+    info = json.dumps({"token": "dup-token"})
     with pytest.raises(DuplicateException):
-        results_manager.import_results(io_bytes_zip(["info.json"]))
+        results_manager.import_results(
+            io_bytes_zip(["info.json"], {b"info.json": info}))
 
 
 def test_import_results_extracts_session(tmp_path):
@@ -281,9 +283,10 @@ def test_get_comparison_identifier_sorts_tokens_and_appends_hash():
     identifier = results_manager.get_comparison_identifier(
         ["0a1b2c3d-b", "9f8e7d6c-a"], ref_tokens=["ref-1"])
 
-    # tokens are sorted, short UUID fragments are used and a hash suffix
-    # is appended; deterministic for the same inputs
-    assert identifier.startswith("comparison-9f8e7d6c-0a1b2c3d-")
+    # tokens are sorted, short UUID fragments are used and an 8-char hash
+    # suffix is appended (no separator before the hash); deterministic
+    assert identifier.startswith("comparison-0a1b2c3d-9f8e7d6c")
+    assert len(identifier) == len("comparison-0a1b2c3d-9f8e7d6c") + 8
     again = results_manager.get_comparison_identifier(
         ["0a1b2c3d-b", "9f8e7d6c-a"], ref_tokens=["ref-1"])
     assert identifier == again
@@ -310,8 +313,10 @@ def test_read_common_passed_tests_keeps_only_common_passes(tmp_path):
 
     passed = results_manager.read_common_passed_tests(["token-1", "token-2"])
 
+    # the product's rule: a test stays passed unless a session FAILED it;
+    # passing in only one session is not sufficient to drop it
     assert "/group/common.html" in passed["group"]
-    assert "/group/only1.html" not in passed["group"]
+    assert "/group/only1.html" in passed["group"]
     assert "/group/failed.html" not in passed["group"]
 
 

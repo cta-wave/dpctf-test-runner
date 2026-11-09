@@ -1,3 +1,4 @@
+import time
 import pytest
 from unittest.mock import Mock
 
@@ -101,7 +102,8 @@ def test_delete_expired_events():
     dispatcher.dispatch_event("token", STATUS_EVENT, data="a")
     assert len(dispatcher._events["token"]) == 1
 
-    # expiration_date is in the past for duration 0
+    # the event's expiration_date is now + 0; wait past that millisecond
+    time.sleep(0.002)
     dispatcher._delete_expired_events()
     assert "token" not in dispatcher._events
 

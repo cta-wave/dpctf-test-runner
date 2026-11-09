@@ -223,6 +223,8 @@ class ResultsManager(object):
                             continue
                         failed_tests[api].append(test)
 
+        return passed_tests
+
     def read_results_wpt_report_uri(self, token, api):
         api_directory = os.path.join(self._results_directory_path, token, api)
         if not os.path.isdir(api_directory):

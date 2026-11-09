@@ -145,6 +145,9 @@ def test_get_tests_uses_reference_results():
 
 def test_get_tests_without_reference_tokens_filters_nothing():
     results_manager = Mock()
+    # a real ResultsManager returns None for empty reference token lists
+    results_manager.read_common_passed_tests.side_effect = (
+        lambda tokens: None if not tokens else Mock())
     loader = TestLoader()
     loader.initialize(
         exclude_list_file_path="",
@@ -193,11 +196,15 @@ def test_load_tests_reads_include_and_exclude_files(tmp_path):
     exclude_file = tmp_path / "exclude.txt"
     exclude_file.write_text("/group/test2.html\n")
 
+    results_manager = Mock()
+    # a real ResultsManager returns None for empty reference token lists
+    results_manager.read_common_passed_tests.side_effect = (
+        lambda tokens: None if not tokens else Mock())
     loader = TestLoader()
     loader.initialize(
         exclude_list_file_path=str(exclude_file),
         include_list_file_path=str(include_file),
-        results_manager=Mock(),
+        results_manager=results_manager,
         api_titles=[],
     )
     loader.load_tests(make_manifest())

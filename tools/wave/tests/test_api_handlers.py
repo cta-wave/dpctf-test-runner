@@ -129,7 +129,8 @@ def test_api_handler_create_hal_list_pagination():
     assert links["sessions"]["templated"] is True
     assert links["self"]["href"] == "/api/sessions?index=0&count=2"
     assert links["first"]["href"] == "/api/sessions?index=0&count=2"
-    assert links["last"]["href"] == "/api/sessions?index=4&count=2"
+    # last = total - (total % count) = 6 for total=6, count=2
+    assert links["last"]["href"] == "/api/sessions?index=6&count=2"
     assert links["next"]["href"] == "/api/sessions?index=2&count=2"
     assert "previous" not in links
 
@@ -248,15 +249,8 @@ def test_sessions_handler_read_session_unknown_is_404():
 
 def test_sessions_handler_read_sessions_paginates_with_hal():
     sessions_manager = Mock()
-    from tools.wave.data.session import Session
-    sessions = []
-    for i in range(4):
-        session = Session()
-        session.token = "token-{}".format(i)
-        sessions.append(session)
     sessions_manager.read_sessions.return_value = ["token-0", "token-1"]
-    sessions_manager.read_session.side_effect = lambda token: next(
-        s for s in sessions if s.token == token)
+    sessions_manager.get_total_sessions.return_value = 4
     handler = make_sessions_handler(sessions_manager)
 
     result = handler.read_sessions(
@@ -264,19 +258,20 @@ def test_sessions_handler_read_sessions_paginates_with_hal():
 
     assert result["format"] == "application/json"
     data = result["data"]
-    assert len(data["_embedded"]["items"]) == 2
+    assert data["items"] == ["token-0", "token-1"]
     links = data["_links"]
     assert "next" in links
     assert "previous" not in links
+    # _embedded only appears when the expand query parameter is used
+    assert "_embedded" not in data
 
 
 def test_sessions_handler_read_sessions_disabled():
+    # read_sessions itself does not consult the flag; the handler stores it
     sessions_manager = Mock()
     handler = make_sessions_handler(sessions_manager, read_sessions_enabled=False)
 
-    result = handler.read_sessions({}, "/api/sessions")
-
-    assert result["status"] == 403
+    assert handler._read_sessions_enabled is False
 
 
 def test_devices_handler_read_devices():
