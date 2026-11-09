@@ -1,3 +1,4 @@
+import os
 import pytest
 import time
 from unittest.mock import Mock
@@ -5,6 +6,10 @@ from unittest.mock import Mock
 from tools.wave.testing.tests_manager import TestsManager
 from tools.wave.testing.results_manager import ResultsManager
 from tools.wave.data.session import Session
+from tools.wave.data.exceptions.duplicate_exception import DuplicateException
+from tools.wave.data.exceptions.invalid_data_exception import InvalidDataException
+from tools.wave.data.exceptions.not_found_exception import NotFoundException
+from tools.wave.data.exceptions.permission_denied_exception import PermissionDeniedException
 
 
 def make_tests_manager():
@@ -199,6 +204,95 @@ def test_next_test_sets_deadline_in_millis(monkeypatch):
     # the test moved out of pending into running
     assert session.pending_tests == {}
     assert session.running_tests == {"group": ["group/test1.html"]}
+
+
+def make_enrichment_results_manager(tmp_path, import_results_enabled=False):
+    results_manager = ResultsManager()
+    sessions_manager = Mock()
+    sessions_manager.read_session.return_value = make_session()
+    results_manager.initialize(
+        results_directory_path=str(tmp_path),
+        sessions_manager=sessions_manager,
+        tests_manager=Mock(),
+        import_results_enabled=import_results_enabled,
+        reports_enabled=False,
+        tests_base_url="",
+        persisting_interval=100,
+    )
+    return results_manager, sessions_manager
+
+
+def test_import_results_api_json_enriches_without_import_flag(tmp_path, monkeypatch):
+    results_manager, sessions_manager = make_enrichment_results_manager(
+        tmp_path, import_results_enabled=False)
+    monkeypatch.setattr(results_manager, "generate_report",
+                        lambda token, api: None)
+    monkeypatch.setattr(results_manager, "create_info_file",
+                        lambda session: None)
+
+    api_dir = tmp_path / "token" / "group"
+    api_dir.mkdir(parents=True)
+    (api_dir / "aa001.json").write_text('{"results": []}')
+
+    results_manager.import_results_api_json(
+        "token", "group", b'{"results": [{"status": "OK"}]}')
+
+    assert (api_dir / "aa001.json").read_bytes() == b'{"results": [{"status": "OK"}]}'
+    sessions_manager.update_session.assert_called_once()
+
+
+def test_import_results_api_json_unknown_session_raises_not_found(tmp_path):
+    results_manager, sessions_manager = make_enrichment_results_manager(tmp_path)
+    sessions_manager.read_session.return_value = None
+
+    with pytest.raises(NotFoundException):
+        results_manager.import_results_api_json("token", "group", b'{"results": []}')
+
+
+def test_import_results_api_json_rejects_path_traversal(tmp_path):
+    results_manager, _ = make_enrichment_results_manager(tmp_path)
+
+    with pytest.raises(InvalidDataException):
+        results_manager.import_results_api_json("..", "group", b'{"results": []}')
+    with pytest.raises(InvalidDataException):
+        results_manager.import_results_api_json("token", "..", b'{"results": []}')
+
+
+def test_import_results_api_json_without_result_file_raises_invalid_data(tmp_path):
+    results_manager, _ = make_enrichment_results_manager(tmp_path)
+
+    # no token/group directory at all
+    with pytest.raises(InvalidDataException):
+        results_manager.import_results_api_json("token", "group", b'{"results": []}')
+
+    # directory exists but holds no result file to patch
+    (tmp_path / "token" / "group").mkdir(parents=True)
+    with pytest.raises(InvalidDataException):
+        results_manager.import_results_api_json("token", "group", b'{"results": []}')
+
+
+def test_import_results_api_json_permission_error_is_actionable(tmp_path):
+    if os.getuid() == 0:
+        pytest.skip("root bypasses file-mode write restrictions")
+
+    results_manager, _ = make_enrichment_results_manager(tmp_path)
+
+    api_dir = tmp_path / "token" / "group"
+    api_dir.mkdir(parents=True)
+    result_file = api_dir / "aa001.json"
+    result_file.write_text('{"results": []}')
+    result_file.chmod(0o444)
+
+    with pytest.raises(PermissionError, match="owned by uid"):
+        results_manager.import_results_api_json("token", "group", b'{"results": [1]}')
+
+
+def test_import_results_zip_still_requires_import_flag(tmp_path):
+    results_manager, _ = make_enrichment_results_manager(
+        tmp_path, import_results_enabled=False)
+
+    with pytest.raises(PermissionDeniedException):
+        results_manager.import_results(b"not a zip")
 
 
 def test_check_timeouts_resolves_expired_deadline_to_timeout():
