@@ -9,6 +9,9 @@ on:
 jobs:
   build-and-tag:
     runs-on: ubuntu-18.04
+    # Skip cleanly on forks instead of queueing forever on the retired
+    # ubuntu-18.04 runner image (wpt #20700 is long fixed).
+    if: github.repository == 'web-platform-tests/wpt'
     steps:
     - name: Checkout
       uses: actions/checkout@v1
@@ -19,7 +22,6 @@ jobs:
         sudo apt-get -qqy install zstd
         pip install -r tools/wpt/requirements.txt
     - name: Run manifest_build.py
-      # Use a conditional step instead of a conditional job to work around #20700.
       if: github.repository == 'web-platform-tests/wpt'
       run: tools/docker/retry.py --delay 60 python tools/ci/manifest_build.py
       env:
