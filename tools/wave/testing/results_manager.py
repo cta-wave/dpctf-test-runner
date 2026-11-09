@@ -94,7 +94,7 @@ class ResultsManager(object):
         filter_api = None
         if filter_path is not None:
             filter_api = next((p for p in filter_path.split("/")
-                               if p is not None), None)
+                               if p is not None and p != ""), None)
         cached_results = self._read_from_cache(token)
         persisted_results = self.load_results(token)
         results = self._combine_results_by_api(cached_results,
@@ -486,9 +486,9 @@ class ResultsManager(object):
         hash = hashlib.sha1()
         ref_tokens.sort()
         for token in ref_tokens:
-            hash.update(token)
+            hash.update(token.encode("utf-8"))
         for token in tokens:
-            hash.update(token)
+            hash.update(token.encode("utf-8"))
         hash = hash.hexdigest()
         comparison_directory += hash[0:8]
         return comparison_directory
@@ -645,7 +645,7 @@ class ResultsManager(object):
             raise PermissionDeniedException()
         tmp_file_name = "{}.zip".format(str(time.time()))
 
-        with open(tmp_file_name, "w") as file:
+        with open(tmp_file_name, "wb") as file:
             file.write(blob)
 
         zip = zipfile.ZipFile(tmp_file_name)
